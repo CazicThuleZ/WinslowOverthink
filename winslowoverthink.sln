@@ -1,0 +1,34 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Version 17
+VisualStudioVersion = 17.0.31903.59
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "src", "src", "{F3B05BB1-3F82-4A60-874B-808CB3938381}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "MediaService", "src\MediaService\MediaService.csproj", "{72955A86-FA1D-4607-909D-5B27B2337867}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "SearchService", "src\SearchService\SearchService.csproj", "{DCC20129-B429-4B79-983B-5B3AAAE5975E}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{72955A86-FA1D-4607-909D-5B27B2337867}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{72955A86-FA1D-4607-909D-5B27B2337867}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{72955A86-FA1D-4607-909D-5B27B2337867}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{72955A86-FA1D-4607-909D-5B27B2337867}.Release|Any CPU.Build.0 = Release|Any CPU
+		{DCC20129-B429-4B79-983B-5B3AAAE5975E}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{DCC20129-B429-4B79-983B-5B3AAAE5975E}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{DCC20129-B429-4B79-983B-5B3AAAE5975E}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{DCC20129-B429-4B79-983B-5B3AAAE5975E}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(NestedProjects) = preSolution
+		{72955A86-FA1D-4607-909D-5B27B2337867} = {F3B05BB1-3F82-4A60-874B-808CB3938381}
+		{DCC20129-B429-4B79-983B-5B3AAAE5975E} = {F3B05BB1-3F82-4A60-874B-808CB3938381}
+	EndGlobalSection
+EndGlobal
