@@ -1,3 +1,5 @@
+using MassTransit;
+using MediaService.Consumers;
 using MediaService.Data;
 using Microsoft.EntityFrameworkCore;
 
@@ -10,7 +12,26 @@ builder.Services.AddDbContext<MediaDbContext>(options =>
 {
     options.UseNpgsql(builder.Configuration.GetConnectionString("DefaultConnection"));
 });
+
 builder.Services.AddAutoMapper(AppDomain.CurrentDomain.GetAssemblies());
+builder.Services.AddMassTransit(x =>
+{
+    x.AddEntityFrameworkOutbox<MediaDbContext>(opt =>
+    {
+        opt.QueryDelay = TimeSpan.FromSeconds(10);
+        opt.UsePostgres();
+        opt.UseBusOutbox();
+       
+    });
+
+    x.AddConsumersFromNamespaceContaining<MediaFileCreatedFaultConsumer>();
+    x.SetEndpointNameFormatter(new KebabCaseEndpointNameFormatter("media", false)); 
+
+    x.UsingRabbitMq((context, cfg) =>
+    {
+        cfg.ConfigureEndpoints(context);
+    });
+});
 
 var app = builder.Build();
 

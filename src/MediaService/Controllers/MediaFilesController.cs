@@ -4,6 +4,8 @@ using System.Linq;
 using System.Threading.Tasks;
 using AutoMapper;
 using AutoMapper.QueryableExtensions;
+using Contracts;
+using MassTransit;
 using MediaService.Data;
 using MediaService.DTOs;
 using MediaService.Entities;
@@ -18,10 +20,12 @@ namespace MediaService.Controllers
     {
         private readonly MediaDbContext _context;
         private readonly IMapper _mapper;
+        private readonly IPublishEndpoint _publishEndpoint;
 
-        public MediaFilesController(MediaDbContext context, IMapper mapper)
+        public MediaFilesController(MediaDbContext context, IMapper mapper, IPublishEndpoint publishEndpoint)
         {
             _mapper = mapper;
+            _publishEndpoint = publishEndpoint;
             _context = context;            
         }
 
@@ -56,12 +60,15 @@ namespace MediaService.Controllers
             newVideoFile.Id = Guid.NewGuid();
             _context.VideoFiles.Add(newVideoFile);
 
+            var publishedVideoFile = _mapper.Map<VideoFileDto>(newVideoFile);
+            await _publishEndpoint.Publish(_mapper.Map<MediaFileCreated>(publishedVideoFile));            
+
             var result = await _context.SaveChangesAsync() > 0;
 
             if (!result)
                 return BadRequest("Unable to create new VideoFile");
 
-            return CreatedAtAction(nameof(GetVideoFileById), new { id = newVideoFile.Id }, _mapper.Map<VideoFileDto>(newVideoFile));
+            return CreatedAtAction(nameof(GetVideoFileById), new { id = newVideoFile.Id }, publishedVideoFile);
         }
 
         [HttpPut("{id}")]
@@ -71,24 +78,17 @@ namespace MediaService.Controllers
             if (VideoFileToUpdate == null)
                 return NotFound();
 
-            VideoFileToUpdate.Duration = updateVideoFileDto.Duration ?? VideoFileToUpdate.Duration;
-            VideoFileToUpdate.Description = updateVideoFileDto.Description ?? VideoFileToUpdate.Description;
-            VideoFileToUpdate.EpisodeNumber = updateVideoFileDto.EpisodeNumber ?? VideoFileToUpdate.EpisodeNumber;
-            VideoFileToUpdate.EpisodeTitle = updateVideoFileDto.EpisodeTitle ?? VideoFileToUpdate.EpisodeTitle;
-            VideoFileToUpdate.FileCreateDateUTC = updateVideoFileDto.FileCreateDateUTC ?? VideoFileToUpdate.FileCreateDateUTC;
+            VideoFileToUpdate.DiskVolumeName = updateVideoFileDto.DiskVolumeName ?? VideoFileToUpdate.DiskVolumeName;
             VideoFileToUpdate.FilePath = updateVideoFileDto.FilePath ?? VideoFileToUpdate.FilePath;
-            VideoFileToUpdate.FileName = updateVideoFileDto.FileName ?? VideoFileToUpdate.FileName;
-            VideoFileToUpdate.SeasonNumber = updateVideoFileDto.SeasonNumber ?? VideoFileToUpdate.SeasonNumber;
-            VideoFileToUpdate.ShowTitle = updateVideoFileDto.ShowTitle ?? VideoFileToUpdate.ShowTitle;
-            VideoFileToUpdate.Size = updateVideoFileDto.Size ?? VideoFileToUpdate.Size;
-            VideoFileToUpdate.ThumbnailUrl = updateVideoFileDto.ThumbnailUrl ?? VideoFileToUpdate.ThumbnailUrl;
+
+            await _publishEndpoint.Publish(_mapper.Map<MediaFileUpdated>(VideoFileToUpdate));
 
             var result = await _context.SaveChangesAsync() > 0;
 
             if (!result)
                 return BadRequest("Unable to update VideoFile");
 
-            return NoContent();
+            return Ok();
         }
 
         [HttpDelete("{id}")]
@@ -99,6 +99,8 @@ namespace MediaService.Controllers
                 return NotFound();
 
             _context.VideoFiles.Remove(VideoFileToDelete);
+
+            await _publishEndpoint.Publish<MediaFileDeleted>(new { Id = VideoFileToDelete.Id.ToString() });
 
             var result = await _context.SaveChangesAsync() > 0;
 

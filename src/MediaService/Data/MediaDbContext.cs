@@ -1,4 +1,5 @@
-﻿using MediaService.Entities;
+﻿using MassTransit;
+using MediaService.Entities;
 using Microsoft.EntityFrameworkCore;
 
 namespace MediaService.Data;
@@ -10,6 +11,13 @@ public class MediaDbContext : DbContext
     }
 
     public DbSet<VideoFile> VideoFiles { get; set; } = null!;
-    public DbSet<DiskVolume> DiskVolumes { get; set; } = null!;
-    
+
+    protected override void OnModelCreating(ModelBuilder modelBuilder)
+    {
+        base.OnModelCreating(modelBuilder);
+        modelBuilder.AddInboxStateEntity();
+        modelBuilder.AddOutboxMessageEntity();
+        modelBuilder.AddOutboxStateEntity();
+    }
+
 }

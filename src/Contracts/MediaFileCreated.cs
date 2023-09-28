@@ -1,12 +1,7 @@
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Threading.Tasks;
+﻿namespace Contracts;
 
-namespace MediaService.DTOs
+public class MediaFileCreated
 {
-    public class VideoFileDto
-    {
         public Guid Id { get; set; } 
         public string DiskVolumeName { get; set; }
         public string FilePath { get; set; }
@@ -20,6 +15,6 @@ namespace MediaService.DTOs
         public string EpisodeTitle { get; set; }
         public int SeasonNumber { get; set; }
         public int EpisodeNumber { get; set; }
-        public DateTime FileCreateDateUTC { get; set; }
-    }
+        public DateTime FileCreateDateUTC { get; set; }    
+
 }

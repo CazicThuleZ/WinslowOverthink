@@ -4,11 +4,12 @@ namespace SearchService.Models;
 
 public class Item : Entity
 {
-        public Guid DiskVolumeId { get; set; }
+        public string DiskVolumeName { get; set; }
         public string FilePath { get; set; } = string.Empty;
         public string FileName { get; set; } = string.Empty;
         public string ShowTitle { get; set; } = string.Empty;
-        public string Description { get; set; } = string.Empty;
+        public string Description { get; set; } = string.Empty;        
+        public string YearReleased  { get; set; } = string.Empty;
         public decimal Duration { get; set; } = 0;
         public int Size { get; set; } = 0;
         public string ThumbnailUrl { get; set; } = string.Empty;
