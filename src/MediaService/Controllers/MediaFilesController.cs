@@ -9,6 +9,7 @@ using MassTransit;
 using MediaService.Data;
 using MediaService.DTOs;
 using MediaService.Entities;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 
@@ -53,9 +54,12 @@ namespace MediaService.Controllers
             return _mapper.Map<VideoFileDto>(VideoFile);
         }
 
+        [Authorize]
         [HttpPost]
         public async Task<ActionResult<AddVideoFileDto>> CreateVideoFile(AddVideoFileDto addVideoFileDto)
         {
+            //var username = User.Identity.Name;  // Not saved to db, mostly this just serves as a how to reminder in case we need it later
+
             var newVideoFile = _mapper.Map<VideoFile>(addVideoFileDto);
             newVideoFile.Id = Guid.NewGuid();
             _context.VideoFiles.Add(newVideoFile);
@@ -71,6 +75,7 @@ namespace MediaService.Controllers
             return CreatedAtAction(nameof(GetVideoFileById), new { id = newVideoFile.Id }, publishedVideoFile);
         }
 
+        [Authorize]
         [HttpPut("{id}")]
         public async Task<ActionResult> UpdateVideoFile(Guid id, UpdateVideoFileDto updateVideoFileDto)
         {
@@ -91,6 +96,7 @@ namespace MediaService.Controllers
             return Ok();
         }
 
+        [Authorize]
         [HttpDelete("{id}")]
         public async Task<ActionResult> DeleteVideoFile(Guid id)
         {
