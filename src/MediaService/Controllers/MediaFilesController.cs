@@ -19,39 +19,31 @@ namespace MediaService.Controllers
     [Route("api/[controller]")]
     public class MediaFilesController : ControllerBase
     {
-        private readonly MediaDbContext _context;
+        private readonly IMediaRepository _repo;
         private readonly IMapper _mapper;
         private readonly IPublishEndpoint _publishEndpoint;
 
-        public MediaFilesController(MediaDbContext context, IMapper mapper, IPublishEndpoint publishEndpoint)
+        public MediaFilesController(IMediaRepository repo, IMapper mapper, IPublishEndpoint publishEndpoint)
         {
+            _repo = repo;
             _mapper = mapper;
             _publishEndpoint = publishEndpoint;
-            _context = context;            
         }
 
         [HttpGet]
         public async Task<ActionResult<List<VideoFileDto>>> GetAllVideoFiles(string date)
-        {
-            var query = _context.VideoFiles.OrderBy(x => x.FileCreateDateUTC).AsQueryable();
-
-            if (!string.IsNullOrEmpty(date))
-            {
-                query = query.Where(x => x.FileCreateDateUTC.CompareTo(DateTime.Parse(date).ToUniversalTime()) > 0);
-            }
-
-            return await query.ProjectTo<VideoFileDto>(_mapper.ConfigurationProvider).ToListAsync();
-
+        { 
+            return await _repo.GetAllVideoFiles(date);
         }
 
         [HttpGet("{id}")]
         public async Task<ActionResult<VideoFileDto>> GetVideoFileById(Guid id)
         {
-            var VideoFile = await _context.VideoFiles.FirstOrDefaultAsync(x => x.Id == id); 
+            var VideoFile = await _repo.GetVideoFileByIdAsync(id);
             if (VideoFile == null)
                 return NotFound();
             
-            return _mapper.Map<VideoFileDto>(VideoFile);
+            return VideoFile;
         }
 
         [Authorize]
@@ -62,12 +54,12 @@ namespace MediaService.Controllers
 
             var newVideoFile = _mapper.Map<VideoFile>(addVideoFileDto);
             newVideoFile.Id = Guid.NewGuid();
-            _context.VideoFiles.Add(newVideoFile);
+            _repo.AddVideoFile(newVideoFile);
 
             var publishedVideoFile = _mapper.Map<VideoFileDto>(newVideoFile);
             await _publishEndpoint.Publish(_mapper.Map<MediaFileCreated>(publishedVideoFile));            
 
-            var result = await _context.SaveChangesAsync() > 0;
+            var result = await _repo.SaveChangesAsync();
 
             if (!result)
                 return BadRequest("Unable to create new VideoFile");
@@ -79,7 +71,7 @@ namespace MediaService.Controllers
         [HttpPut("{id}")]
         public async Task<ActionResult> UpdateVideoFile(Guid id, UpdateVideoFileDto updateVideoFileDto)
         {
-            var VideoFileToUpdate = await _context.VideoFiles.FirstOrDefaultAsync(x => x.Id == id);
+            var VideoFileToUpdate = await _repo.GetVideoFileEntityByIdAsync(id);
             if (VideoFileToUpdate == null)
                 return NotFound();
 
@@ -88,7 +80,7 @@ namespace MediaService.Controllers
 
             await _publishEndpoint.Publish(_mapper.Map<MediaFileUpdated>(VideoFileToUpdate));
 
-            var result = await _context.SaveChangesAsync() > 0;
+            var result = await _repo.SaveChangesAsync();
 
             if (!result)
                 return BadRequest("Unable to update VideoFile");
@@ -100,15 +92,15 @@ namespace MediaService.Controllers
         [HttpDelete("{id}")]
         public async Task<ActionResult> DeleteVideoFile(Guid id)
         {
-            var VideoFileToDelete = await _context.VideoFiles.FindAsync(id);
+            var VideoFileToDelete = await _repo.GetVideoFileEntityByIdAsync(id);
             if (VideoFileToDelete == null)
                 return NotFound();
 
-            _context.VideoFiles.Remove(VideoFileToDelete);
+            _repo.RemoveVideoFile(VideoFileToDelete);
 
             await _publishEndpoint.Publish<MediaFileDeleted>(new { Id = VideoFileToDelete.Id.ToString() });
 
-            var result = await _context.SaveChangesAsync() > 0;
+            var result = await _repo.SaveChangesAsync();
 
             if (!result)
                 return BadRequest("Unable to delete VideoFile");

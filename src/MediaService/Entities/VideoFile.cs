@@ -17,4 +17,5 @@ public class VideoFile
         public int SeasonNumber { get; set; } = 0;
         public int EpisodeNumber { get; set; } = 0; 
         public DateTime FileCreateDateUTC { get; set; } = DateTime.UtcNow;
+        public bool IsMovie() => SeasonNumber == 0 && EpisodeNumber == 0;
 }

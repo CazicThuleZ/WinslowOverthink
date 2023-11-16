@@ -1,4 +1,5 @@
 using MassTransit;
+using MediaService;
 using MediaService.Consumers;
 using MediaService.Data;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
@@ -49,6 +50,7 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
         options.TokenValidationParameters.NameClaimType = "username";
     });
 
+builder.Services.AddScoped<IMediaRepository, MediaRepository>();    
 
 var app = builder.Build();
 
@@ -67,3 +69,5 @@ catch (Exception ex)
 }
 
 app.Run();
+
+public partial class Program {} // This is needed for WebApplicationBuilder to work (Integration Testing)

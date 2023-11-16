@@ -10,6 +10,9 @@ COPY src/SearchService/SearchService.csproj src/SearchService/SearchService.cspr
 COPY src/GatewayService/GatewayService.csproj src/GatewayService/GatewayService.csproj
 COPY src/Contracts/Contracts.csproj src/Contracts/Contracts.csproj
 COPY src/IdentityService/IdentityService.csproj src/IdentityService/IdentityService.csproj
+COPY src/JournalDaemon/JournalDaemon.csproj src/JournalDaemon/JournalDaemon.csproj
+COPY tests/mediaService.UnitTests/mediaService.UnitTests.csproj tests/mediaService.UnitTests/mediaService.UnitTests.csproj
+COPY tests/VideoFileService.IntegrationTests/VideoFileService.IntegrationTests.csproj tests/VideoFileService.IntegrationTests/VideoFileService.IntegrationTests.csproj
 
 # Restore package deps
 RUN dotnet restore winslowoverthink.sln
