@@ -1,55 +1,68 @@
-﻿using System;
-using System.IO;
+﻿using System.Runtime.CompilerServices;
 using System.Text.RegularExpressions;
 using Markdig;
 using Microsoft.Extensions.Configuration;
-using OpenAI_API.Chat;
-using OpenAI_API.Images;
+using Microsoft.Extensions.Hosting;
+using Microsoft.Extensions.Logging;
 
-class Program
+namespace DaemonDo.Journal.AutoClassify;
+
+public class AutoClassify : IHostedService
 {
-    static async Task Main(string[] args)
+    private ILogger<AutoClassify> _logger;
+    private static IHttpClientFactory _clientFactory;
+    private readonly IConfiguration _configuration;
+    private readonly string _inputDirectory;
+    private readonly string _outputDirectory;
+    private readonly string _openApiKey;
+
+
+
+
+    public AutoClassify(ILogger<AutoClassify> logger, IHttpClientFactory httpClientFactory, IConfiguration config)
     {
-        var configuration = new ConfigurationBuilder()
-            .SetBasePath(Directory.GetCurrentDirectory())
-            .AddJsonFile("appsettings.Development.json")
-            .Build();
+        _logger = logger;
+        _clientFactory = httpClientFactory;
+        _configuration = config;
 
-        string inputDirectory = configuration["InputDirectory"];
-        string outputDirectory = configuration["OutputDirectory"];
-        string openAPIkey = configuration["WinslowKey"];
+        _inputDirectory = _configuration.GetValue<string>("InputDirectory");
+        _outputDirectory = _configuration.GetValue<string>("OutputDirectory");
+        _openApiKey = _configuration.GetValue<string>("WinslowKey");
 
-        // https://github.com/OkGoDoIt/OpenAI-API-dotnet
 
-        // var api = new OpenAI_API.OpenAIAPI(openAPIkey);
-        // var result = await api.Completions.GetCompletion("The third rule of fight club is ");
-        // Console.WriteLine(result);
-        // var result1 = await api.ImageGenerations.CreateImageAsync(new ImageGenerationRequest("Man in dark sunglasses presenting two contrasting soap bars in a dimly lit, gritty setting, reminiscent of 'Fight Club'.", 1, ImageSize._512));
-        // Console.WriteLine(result1.Data[0].Url);
+    }
 
-        if (!Directory.Exists(outputDirectory))
+    private void ParseNewMusings()
+    {
+        //LoadHashTags();
+        FindUnprocessedContent();
+    }
+
+    private async void FindUnprocessedContent()
+    {
+        if (!Directory.Exists(_outputDirectory))
         {
-            Directory.CreateDirectory(outputDirectory);
+            Directory.CreateDirectory(_outputDirectory);
         }
 
-        var markdownFiles = Directory.GetFiles(inputDirectory, "*.md");
+        var markdownFiles = Directory.GetFiles(_inputDirectory, "*.md");
 
         List<string> uniqueWords = new List<string>();
 
         string searchTerm = "My spiritual teacher Mr.";
-
         foreach (var inputFile in markdownFiles)
         {
             string fileName = Path.GetFileName(inputFile);
-            string outputFile = Path.Combine(outputDirectory, fileName);
+            string outputFile = Path.Combine(_outputDirectory, fileName);
 
             string markdownContent = File.ReadAllText(inputFile);
 
             string[] sections = Regex.Split(markdownContent, @"\n(?=#)");
             foreach (string section in sections)
             {
-                var api = new OpenAI_API.OpenAIAPI(openAPIkey);
+                var api = new OpenAI_API.OpenAIAPI(_openApiKey);
                 var chat = api.Chat.CreateConversation();
+
                 chat.AppendSystemMessage(@"You are an analyst classifying blocks of text according to their content. I will provide a series of inputs for which you will respond ""Understood"".  When I am finished providing imputs, I will send a single input command ""CLASSIFY"" at which time you will respond with exactly 5 hashtags that best represents the content of the series.");
                 string sectionContent = section.Trim();
 
@@ -70,20 +83,29 @@ class Program
                 string textContent = string.Join("\n", filteredLines);
                 List<string> textChunks = SplitTextIntoChunks(textContent, 4000);
 
-                foreach (string chunk in textChunks)
+                if (textChunks.Count > 0)
                 {
-
-                    chat.AppendUserInput(chunk);
-                    string response = await chat.GetResponseFromChatbotAsync();
-                    Console.WriteLine(chunk);
-                    Console.WriteLine(response);
-                    Console.WriteLine("---------------------------------------------------");
+                    foreach (string chunk in textChunks)
+                    {
+                        chat.AppendUserInput(chunk);
+                        string response = await chat.GetResponseFromChatbotAsync();
+                        Console.WriteLine(chunk);
+                        Console.WriteLine(response);
+                        Console.WriteLine("---------------------------------------------------");
+                    }
+                    chat.AppendUserInput("CLASSIFY");
+                    try
+                    {
+                        string response = await chat.GetResponseFromChatbotAsync();
+                        Console.WriteLine(response);
+                        Console.WriteLine("---------------------------------------------------");
+                    }
+                    catch (Exception ex)
+                    {
+                        Console.WriteLine(ex.Message);
+                    }
                 }
-                chat.AppendUserInput("CLASSIFY");
-                string hashresponse = await chat.GetResponseFromChatbotAsync();
-                Console.WriteLine(hashresponse);
             }
-
 
             //chat.AppendUserInput(markdownContent);            
             //string response = await chat.GetResponseFromChatbotAsync();
@@ -111,6 +133,7 @@ class Program
             Console.WriteLine(word);
         }
     }
+
     static List<string> SplitTextIntoChunks(string text, int chunkSize)
     {
         List<string> chunks = new List<string>();
@@ -125,6 +148,11 @@ class Program
         }
 
         return chunks;
+    }
+
+    private void LoadHashTags()
+    {
+        throw new NotImplementedException();
     }
 
     static void ExtractAndAddWords(string content, List<string> uniqueWords, string searchTerm)
@@ -161,4 +189,16 @@ class Program
         }
     }
 
+    public Task StartAsync(CancellationToken cancellationToken)
+    {
+        ParseNewMusings();
+        return Task.CompletedTask;
+    }
+
+
+
+    public Task StopAsync(CancellationToken cancellationToken)
+    {
+        return Task.CompletedTask;
+    }
 }

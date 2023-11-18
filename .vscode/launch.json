@@ -1,6 +1,21 @@
 {
     "version": "0.2.0",
     "configurations": [
+        
+        {
+            "name": ".NET Core Launch (console)",
+            "type": "coreclr",
+            "request": "launch",
+            "preLaunchTask": "build",
+            "program": "${workspaceFolder}/src/DaemonDo/bin/Debug/net7.0/DaemonDo.dll",
+            "args": [],
+            "cwd": "${workspaceFolder}",
+            "stopAtEntry": false,
+            "console": "internalConsole",
+            "env": {
+                "DAEMONDO_ENVIRONMENT": "Development"
+            }            
+        },
         {
             "name": "Docker .NET Attach (Preview)",
             "type": "docker",
@@ -10,7 +25,6 @@
                 "/app": "${workspaceFolder}"
             }
         },
-
         {
             // Use IntelliSense to find out which attributes exist for C# debugging
             // Use hover for the description of the existing attributes
