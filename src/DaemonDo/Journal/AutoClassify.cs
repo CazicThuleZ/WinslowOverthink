@@ -1,4 +1,5 @@
 ﻿using System.Runtime.CompilerServices;
+using System.Text.Json;
 using System.Text.RegularExpressions;
 using Markdig;
 using Microsoft.Extensions.Configuration;
@@ -10,14 +11,13 @@ namespace DaemonDo.Journal.AutoClassify;
 public class AutoClassify : IHostedService
 {
     private ILogger<AutoClassify> _logger;
-    private static IHttpClientFactory _clientFactory;
+    private readonly IHttpClientFactory _clientFactory;
     private readonly IConfiguration _configuration;
     private readonly string _inputDirectory;
     private readonly string _outputDirectory;
+    private readonly string _saveHashtagsFile;
     private readonly string _openApiKey;
-
-
-
+    private Dictionary<string, HashtagInfo> _hashtagsDictionary = new Dictionary<string, HashtagInfo>();
 
     public AutoClassify(ILogger<AutoClassify> logger, IHttpClientFactory httpClientFactory, IConfiguration config)
     {
@@ -28,17 +28,17 @@ public class AutoClassify : IHostedService
         _inputDirectory = _configuration.GetValue<string>("InputDirectory");
         _outputDirectory = _configuration.GetValue<string>("OutputDirectory");
         _openApiKey = _configuration.GetValue<string>("WinslowKey");
-
+        _saveHashtagsFile = _configuration.GetValue<string>("HashtagsFile");
 
     }
 
-    private void ParseNewMusings()
+    private async Task ParseNewMusings()
     {
         //LoadHashTags();
-        FindUnprocessedContent();
+        await FindUnprocessedContent();
     }
 
-    private async void FindUnprocessedContent()
+    private async Task FindUnprocessedContent()
     {
         if (!Directory.Exists(_outputDirectory))
         {
@@ -60,6 +60,7 @@ public class AutoClassify : IHostedService
             string[] sections = Regex.Split(markdownContent, @"\n(?=#)");
             foreach (string section in sections)
             {
+                // https://github.com/OkGoDoIt/OpenAI-API-dotnet
                 var api = new OpenAI_API.OpenAIAPI(_openApiKey);
                 var chat = api.Chat.CreateConversation();
 
@@ -97,6 +98,7 @@ public class AutoClassify : IHostedService
                     try
                     {
                         string response = await chat.GetResponseFromChatbotAsync();
+                        ParseAndCountHashtags(response);
                         Console.WriteLine(response);
                         Console.WriteLine("---------------------------------------------------");
                     }
@@ -125,13 +127,14 @@ public class AutoClassify : IHostedService
             //File.WriteAllText(outputFile, htmlContent);
         }
 
+        SaveHashtagsToFile(_saveHashtagsFile);
         Console.WriteLine("Markdown files processed successfully.");
-        Console.WriteLine("Unique Words:");
+        // Console.WriteLine("Unique Words:");
 
-        foreach (var word in uniqueWords)
-        {
-            Console.WriteLine(word);
-        }
+        // foreach (var word in uniqueWords)
+        // {
+        //     Console.WriteLine(word);
+        // }
     }
 
     static List<string> SplitTextIntoChunks(string text, int chunkSize)
@@ -153,6 +156,30 @@ public class AutoClassify : IHostedService
     private void LoadHashTags()
     {
         throw new NotImplementedException();
+    }
+    public void ParseAndCountHashtags(string hashtags)
+    {
+        var hashtagParts = hashtags.Split(new[] { ' ' }, StringSplitOptions.RemoveEmptyEntries);
+
+        foreach (var hashtagPart in hashtagParts)
+        {
+            string hashtag = hashtagPart.TrimStart('#').ToLower();
+
+            if (_hashtagsDictionary.TryGetValue(hashtag, out HashtagInfo existingEntry))
+                existingEntry.Count++;
+            else
+                _hashtagsDictionary.Add(hashtag, new HashtagInfo(hashtag));
+        }
+    }
+
+    public void SaveHashtagsToFile(string filePath)
+    {
+        // Serialize the dictionary to JSON, we only need the values which are the HashtagInfo objects
+        var options = new JsonSerializerOptions { WriteIndented = true };
+        string jsonString = JsonSerializer.Serialize(_hashtagsDictionary.Values, options);
+
+        // Write the JSON string to file
+        File.WriteAllText(filePath, jsonString);
     }
 
     static void ExtractAndAddWords(string content, List<string> uniqueWords, string searchTerm)
@@ -189,13 +216,10 @@ public class AutoClassify : IHostedService
         }
     }
 
-    public Task StartAsync(CancellationToken cancellationToken)
+    public async Task StartAsync(CancellationToken cancellationToken)
     {
-        ParseNewMusings();
-        return Task.CompletedTask;
+        await ParseNewMusings();         
     }
-
-
 
     public Task StopAsync(CancellationToken cancellationToken)
     {

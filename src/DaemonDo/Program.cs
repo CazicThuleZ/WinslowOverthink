@@ -9,7 +9,7 @@ using Microsoft.Extensions.Configuration;
 
 class Program
 {
-    static void Main(string[] args)
+    static async Task Main(string[] args)
     {        
         try
         {
@@ -53,9 +53,9 @@ class Program
                 })
                 .Build();
 
-                host.Start();
+                //host.Start();
 
-            //await host.RunAsync();
+            await host.RunAsync();
         }
         catch (Exception)
         {
