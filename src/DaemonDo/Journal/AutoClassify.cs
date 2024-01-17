@@ -1,10 +1,13 @@
-﻿using System.Runtime.CompilerServices;
+﻿using System.Collections.Generic;
+using System.Runtime.CompilerServices;
+using System.Security.Principal;
 using System.Text.Json;
 using System.Text.RegularExpressions;
 using Markdig;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
+using OpenAI_API.Models;
 
 namespace DaemonDo.Journal.AutoClassify;
 
@@ -16,8 +19,12 @@ public class AutoClassify : IHostedService
     private readonly string _inputDirectory;
     private readonly string _outputDirectory;
     private readonly string _saveHashtagsFile;
+    private readonly string _saveHyperlinksFile;
     private readonly string _openApiKey;
-    private Dictionary<string, HashtagInfo> _hashtagsDictionary = new Dictionary<string, HashtagInfo>();
+    private readonly string _invalidChars;
+    public List<HashTagXref> _hashTagLookup { get; set; }
+    public int _tokenCount { get; set; }
+    public List<Hyperlinkage> _hyperlinkage { get; set; }
 
     public AutoClassify(ILogger<AutoClassify> logger, IHttpClientFactory httpClientFactory, IConfiguration config)
     {
@@ -29,112 +36,228 @@ public class AutoClassify : IHostedService
         _outputDirectory = _configuration.GetValue<string>("OutputDirectory");
         _openApiKey = _configuration.GetValue<string>("WinslowKey");
         _saveHashtagsFile = _configuration.GetValue<string>("HashtagsFile");
+        _saveHyperlinksFile = _configuration.GetValue<string>("HyperLinksFile");
 
+        _hashTagLookup = LoadHashTags(_saveHashtagsFile);
+        _hyperlinkage = LoadHyperlinks(_saveHyperlinksFile);
+
+        _invalidChars = new string(Path.GetInvalidFileNameChars()) + new string(Path.GetInvalidPathChars());
+        _tokenCount = 0;
+
+    }
+
+    private List<Hyperlinkage> LoadHyperlinks(string saveHyperlinksFile)
+    {
+        if (File.Exists(saveHyperlinksFile))
+        {
+            string json = File.ReadAllText(saveHyperlinksFile);
+            return JsonSerializer.Deserialize<List<Hyperlinkage>>(json);
+        }
+        else
+        {
+            return new List<Hyperlinkage>();
+        }
     }
 
     private async Task ParseNewMusings()
     {
-        //LoadHashTags();
         await FindUnprocessedContent();
     }
 
     private async Task FindUnprocessedContent()
     {
         if (!Directory.Exists(_outputDirectory))
-        {
             Directory.CreateDirectory(_outputDirectory);
-        }
 
-        var markdownFiles = Directory.GetFiles(_inputDirectory, "*.md");
+        var inputFiles = Directory.GetFiles(_inputDirectory, "*.md")
+                                  .Where(f => !Path.GetFileName(f).StartsWith("upchuck", StringComparison.OrdinalIgnoreCase))
+                                  .OrderByDescending(f => Path.GetFileName(f))
+                                  .ToArray();
 
-        List<string> uniqueWords = new List<string>();
-
-        string searchTerm = "My spiritual teacher Mr.";
-        foreach (var inputFile in markdownFiles)
+        int count = 0;
+        foreach (var inputFile in inputFiles)
         {
             string fileName = Path.GetFileName(inputFile);
-            string outputFile = Path.Combine(_outputDirectory, fileName);
-
-            string markdownContent = File.ReadAllText(inputFile);
-
-            string[] sections = Regex.Split(markdownContent, @"\n(?=#)");
-            foreach (string section in sections)
+            if (File.Exists(_inputDirectory + @"/" + fileName))
             {
-                // https://github.com/OkGoDoIt/OpenAI-API-dotnet
-                var api = new OpenAI_API.OpenAIAPI(_openApiKey);
-                var chat = api.Chat.CreateConversation();
+                string markdownContent = File.ReadAllText(inputFile);
+                string dateSlug = string.Empty;
 
-                chat.AppendSystemMessage(@"You are an analyst classifying blocks of text according to their content. I will provide a series of inputs for which you will respond ""Understood"".  When I am finished providing imputs, I will send a single input command ""CLASSIFY"" at which time you will respond with exactly 5 hashtags that best represents the content of the series.");
-                string sectionContent = section.Trim();
-
-                // Ignore lines beginning with #
-                string[] lines = sectionContent.Split('\n');
-                List<string> filteredLines = new List<string>();
-
-                foreach (string line in lines)
+                string[] sections = Regex.Split(markdownContent, @"\n(?=#)");
+                foreach (string section in sections)
                 {
-                    if (!line.Trim().StartsWith("#") &&
-                        !line.Trim().StartsWith("dates::") &&
-                        !line.Trim().StartsWith("tags::"))
+                    string outputFileName = string.Empty;
+
+                    string sectionContent = section.Trim();
+
+                    string[] lines = sectionContent.Split('\n');
+                    List<string> filteredLines = new List<string>();
+
+
+                    foreach (string line in lines)
                     {
-                        filteredLines.Add(line);
+                        if (line.Trim().ToUpper().StartsWith("# DIALOG"))
+                        {
+                            Regex regex = new Regex(string.Format("[{0}]", Regex.Escape(_invalidChars)));
+                            outputFileName = regex.Replace(line, "") + ".md";
+                        }
+
+                        if (line.Trim().ToUpper().Contains("DATES::"))
+                            dateSlug = line.Trim();
+
+                        if (!line.Trim().StartsWith("#") &&
+                            !line.Trim().StartsWith("dates::") &&
+                            !line.Trim().StartsWith("tags::") &&
+                             line.Trim() != string.Empty)
+                        {
+                            filteredLines.Add(line);
+                        }
                     }
+
+                    string textContent = string.Join("\n", filteredLines);
+                    List<string> textChunks = SplitTextIntoChunks(textContent, 4000);
+                    if (textChunks.Count > 0)
+                    {
+                        try
+                        {
+                            var polishedUpchuck = await PolishThisUpchuck(textChunks);
+                            polishedUpchuck.CaptureDateSlug = dateSlug;
+                            polishedUpchuck.GeneratedFromFileName = "upchuck" + fileName;
+                            SavePolishedUpchuckToFile(polishedUpchuck, "polishedUpchuck" + outputFileName);
+                            dateSlug = string.Empty;
+                        }
+                        catch (Exception ex)
+                        {
+                            Console.WriteLine("Error processing file: " + inputFile + ":::" + ex.Message);
+                        }
+                    }
+
+                    SaveHashtagsToFile(_saveHashtagsFile);
+
                 }
 
-                string textContent = string.Join("\n", filteredLines);
-                List<string> textChunks = SplitTextIntoChunks(textContent, 4000);
+                // string htmlContent = Markdown.ToHtml(markdownContent);
 
-                if (textChunks.Count > 0)
+                // Rename so it doesn't get processed again in future runs.
+                string newFileName = "upchuck" + fileName;
+                string newFilePath = Path.Combine(Path.GetDirectoryName(inputFile), newFileName);
+                try
                 {
-                    foreach (string chunk in textChunks)
-                    {
-                        chat.AppendUserInput(chunk);
-                        string response = await chat.GetResponseFromChatbotAsync();
-                        Console.WriteLine(chunk);
-                        Console.WriteLine(response);
-                        Console.WriteLine("---------------------------------------------------");
-                    }
-                    chat.AppendUserInput("CLASSIFY");
-                    try
-                    {
-                        string response = await chat.GetResponseFromChatbotAsync();
-                        ParseAndCountHashtags(response);
-                        Console.WriteLine(response);
-                        Console.WriteLine("---------------------------------------------------");
-                    }
-                    catch (Exception ex)
-                    {
-                        Console.WriteLine(ex.Message);
-                    }
+                    File.Move(inputFile, newFilePath);
+                }
+                catch (Exception ex)
+                {
+                    Console.WriteLine("Error renaming input file ::: " +  newFileName + " ::: " + inputFile + " ::: " + " to output file " + " ::: " + newFilePath + ex.Message);
                 }
             }
 
-            //chat.AppendUserInput(markdownContent);            
-            //string response = await chat.GetResponseFromChatbotAsync();
-            //Console.WriteLine(response);
+            count++;
+            Console.WriteLine("---------------------------------------------------");
+            Console.WriteLine("Processed " + count.ToString() + " of " + inputFiles.Length.ToString() + " files.");
+            Console.WriteLine("---------------------------------------------------");
+            if (count >= 50)
+                break;
+        }
+    }
 
-            // the entire chat history is available in chat.Messages
-            //foreach (ChatMessage msg in chat.Messages)
-            //{
-            //    Console.WriteLine($"{msg.Role}: {msg.Content}");
-            //}
+    private void SavePolishedUpchuckToFile(PolishedUpchuck polishedUpchuck, string outputFile)
+    {
+        var lines = new List<string>
+        {
+            polishedUpchuck.CaptureDateSlug,
+            "up:: [[" + polishedUpchuck.GeneratedFromFileName + "]]",
+            "tags:: " + string.Join(" ", polishedUpchuck.Hashtags.Select(tag => "#" + tag)),
+            polishedUpchuck.Upchuck
+        };
 
-            string htmlContent = Markdown.ToHtml(markdownContent);
-            ExtractAndAddWords(markdownContent, uniqueWords, searchTerm);
+        string filePath = Path.Combine(_outputDirectory, outputFile);
+        string fileNameWithoutExtension = Path.GetFileNameWithoutExtension(outputFile);
+        string fileExtension = Path.GetExtension(outputFile);
+        Random random = new Random();
 
+        for (int i = 0; i < 10; i++)
+        {
+            if (!File.Exists(filePath))
+            {
+                File.WriteAllLines(filePath, lines);
+                return;
+            }
 
-
-            //File.WriteAllText(outputFile, htmlContent);
+            char randomChar = (char)random.Next('a', 'z' + 1);
+            string newFileName = randomChar + fileNameWithoutExtension + fileExtension;
+            filePath = Path.Combine(_outputDirectory, newFileName);
         }
 
-        SaveHashtagsToFile(_saveHashtagsFile);
-        Console.WriteLine("Markdown files processed successfully.");
-        // Console.WriteLine("Unique Words:");
+        throw new Exception("Could not write to file after 10 attempts.");
+    }
 
-        // foreach (var word in uniqueWords)
-        // {
-        //     Console.WriteLine(word);
-        // }
+    private async Task<PolishedUpchuck> PolishThisUpchuck(List<string> textChunks)
+    {
+        // https://github.com/OkGoDoIt/OpenAI-API-dotnet
+        var api = new OpenAI_API.OpenAIAPI(_openApiKey);
+        var chat = api.Chat.CreateConversation();
+        chat.Model = Model.ChatGPTTurbo_16k;
+
+        PolishedUpchuck polishedUpchuck = new PolishedUpchuck();
+
+        chat.AppendSystemMessage(@"You are an analyst classifying blocks of text according to their content. I will provide a series of inputs for which you will respond ""Understood"".  When I am finished providing imputs, I will send a single input command ""CLASSIFY"" at which time you will respond with exactly 5 hashtags that best represents the content of the series.");
+
+        foreach (string chunk in textChunks)
+        {
+            chat.AppendUserInput(chunk);
+            string response = await chat.GetResponseFromChatbotAsync();
+            _tokenCount += chat.MostRecentApiResult.Usage.PromptTokens;
+            await Task.Delay(TimeSpan.FromSeconds(20));
+            Console.WriteLine(chunk);
+            Console.WriteLine(response);
+        }
+        chat.AppendUserInput("CLASSIFY");
+        try
+        {
+            string response = await chat.GetResponseFromChatbotAsync();
+            _tokenCount += chat.MostRecentApiResult.Usage.PromptTokens;
+            await Task.Delay(TimeSpan.FromSeconds(20));
+            polishedUpchuck.Hashtags = ParseHashtags(response);
+            Console.WriteLine(response);
+            Console.WriteLine("---------------------------------------------------");
+            Console.WriteLine("Token Count:  " + _tokenCount.ToString() + "   Cost:  " + ((_tokenCount / 1000) * .0020).ToString());
+            Console.WriteLine("---------------------------------------------------");
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine(ex.Message);
+        }
+
+        try
+        {
+            chat.AppendSystemMessage(@"You are a talented New York Times editor. Rewrite the previous with well-structured, well paragraphed and well punctuated sentences using your expertise in grammer and style.  Avoid redundancy and avoid summarizing.  Ensure that each sentence contributes to the spirit of what the original piece is trying to say.  Do not mention your role or goals in your response.");
+            string response = await chat.GetResponseFromChatbotAsync();
+            _tokenCount += chat.MostRecentApiResult.Usage.PromptTokens;
+            response = MarkupHyperlinks(response);
+            polishedUpchuck.Upchuck = response;
+            await Task.Delay(TimeSpan.FromSeconds(10));
+            Console.WriteLine(response);
+            Console.WriteLine("---------------------------------------------------");
+            Console.WriteLine("Token Count:  " + _tokenCount.ToString() + "   Cost:  " + ((_tokenCount / 1000) * .0020).ToString());
+            Console.WriteLine("---------------------------------------------------");
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine(ex.Message);
+        }
+
+        return polishedUpchuck;
+
+    }
+
+    private string MarkupHyperlinks(string response)
+    {
+        foreach (var hyperlinkage in _hyperlinkage)
+        {
+            response = Regex.Replace(response, hyperlinkage.SourceMapping, hyperlinkage.TargetMapping, RegexOptions.IgnoreCase);
+        }
+
+        return response;
     }
 
     static List<string> SplitTextIntoChunks(string text, int chunkSize)
@@ -153,72 +276,62 @@ public class AutoClassify : IHostedService
         return chunks;
     }
 
-    private void LoadHashTags()
+    static List<HashTagXref> LoadHashTags(string filePath)
     {
-        throw new NotImplementedException();
+        if (File.Exists(filePath))
+        {
+            string json = File.ReadAllText(filePath);
+            return JsonSerializer.Deserialize<List<HashTagXref>>(json);
+        }
+        else
+        {
+            return new List<HashTagXref>();
+        }
     }
-    public void ParseAndCountHashtags(string hashtags)
+
+    private List<string> ParseHashtags(string hashtags)
     {
         var hashtagParts = hashtags.Split(new[] { ' ' }, StringSplitOptions.RemoveEmptyEntries);
+        HashSet<string> hashtagsToApply = new HashSet<string>();
 
         foreach (var hashtagPart in hashtagParts)
         {
             string hashtag = hashtagPart.TrimStart('#').ToLower();
 
-            if (_hashtagsDictionary.TryGetValue(hashtag, out HashtagInfo existingEntry))
-                existingEntry.Count++;
-            else
-                _hashtagsDictionary.Add(hashtag, new HashtagInfo(hashtag));
+            string alias = GetAliasOrAddTag(hashtag);
+            if (alias != string.Empty)
+                hashtagsToApply.Add(alias);
         }
+
+        return hashtagsToApply.ToList();
     }
 
     public void SaveHashtagsToFile(string filePath)
     {
-        // Serialize the dictionary to JSON, we only need the values which are the HashtagInfo objects
         var options = new JsonSerializerOptions { WriteIndented = true };
-        string jsonString = JsonSerializer.Serialize(_hashtagsDictionary.Values, options);
 
-        // Write the JSON string to file
+        string jsonString = JsonSerializer.Serialize(_hashTagLookup, options);
         File.WriteAllText(filePath, jsonString);
     }
 
-    static void ExtractAndAddWords(string content, List<string> uniqueWords, string searchTerm)
+
+    private string GetAliasOrAddTag(string tag)
     {
-        searchTerm = searchTerm.ToLower();
-        content = content.ToLower();
-
-        int index = content.IndexOf(searchTerm);
-
-        while (index != -1)
+        var hashTagXref = _hashTagLookup.FirstOrDefault(x => x.HashTag == tag);
+        if (hashTagXref != null)
         {
-            // Move index to the end of the search term
-            index += searchTerm.Length;
-
-            // Extract the next two words
-            var words = content
-                .Substring(index)
-                .Split(new[] { ' ', '\t', '\n', '\r', '.', ',', ';', ':' }, StringSplitOptions.RemoveEmptyEntries)
-                .Take(2)
-                .ToList();
-
-            if (words.Count == 2)
-            {
-                string twoWords = string.Join(" ", words);
-                // Add unique words to the list
-                if (!uniqueWords.Contains(twoWords))
-                {
-                    uniqueWords.Add(twoWords);
-                }
-            }
-
-            // Find the next occurrence
-            index = content.IndexOf(searchTerm, index);
+            return hashTagXref.HashTagAlias;
+        }
+        else
+        {
+            _hashTagLookup.Add(new HashTagXref { HashTag = tag, HashTagAlias = "" });
+            return "";
         }
     }
 
     public async Task StartAsync(CancellationToken cancellationToken)
     {
-        await ParseNewMusings();         
+        await ParseNewMusings();
     }
 
     public Task StopAsync(CancellationToken cancellationToken)

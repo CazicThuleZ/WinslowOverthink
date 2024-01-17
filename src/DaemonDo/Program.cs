@@ -6,6 +6,7 @@ using NLog.Extensions.Logging;
 using DaemonDo.Journal.AutoClassify;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Configuration;
+using DaemonDo.Archive;
 
 class Program
 {
@@ -49,6 +50,7 @@ class Program
                     });
 
                     services.AddHostedService<AutoClassify>();
+                    services.AddHostedService<BackupFiles>();
 
                 })
                 .Build();
