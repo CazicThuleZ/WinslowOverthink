@@ -18,6 +18,11 @@ public class MediaDbContext : DbContext
         modelBuilder.AddInboxStateEntity();
         modelBuilder.AddOutboxMessageEntity();
         modelBuilder.AddOutboxStateEntity();
+
+        modelBuilder.Entity<VideoFile>()
+            .HasIndex(v => new { v.ShowTitle, v.SeasonNumber, v.EpisodeNumber })
+            .HasDatabaseName("Index_ShowTitle_SeasonNumber_EpisodeNumber");
+
     }
 
 }

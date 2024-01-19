@@ -10,7 +10,7 @@ public class MediaFileCreated
         public string Description { get; set; }
         public string YearReleased { get; set; }
         public decimal Duration { get; set; }
-        public int Size { get; set; }
+        public long Size { get; set; }
         public string ThumbnailUrl { get; set; }
         public string EpisodeTitle { get; set; }
         public int SeasonNumber { get; set; }

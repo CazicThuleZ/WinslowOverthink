@@ -11,7 +11,7 @@ public class VideoFile
         public string Description { get; set; } = string.Empty;
         public string YearReleased { get; set; }
         public decimal Duration { get; set; } = 0;
-        public int Size { get; set; } = 0;
+        public long Size { get; set; } = 0;
         public string ThumbnailUrl { get; set; } = string.Empty;
         public string EpisodeTitle { get; set; } = string.Empty;
         public int SeasonNumber { get; set; } = 0;
