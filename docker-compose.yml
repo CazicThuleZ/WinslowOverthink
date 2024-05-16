@@ -78,6 +78,12 @@ services:
       - ASPNETCORE_URLS=http://+:80
     ports:
       - 6001:80
+  ui:
+    build:
+      context: .
+      dockerfile: src/WinslowUI/Dockerfile
+    ports:
+      - "5266:80"      
 volumes:
   pgdata:
   mongodata:

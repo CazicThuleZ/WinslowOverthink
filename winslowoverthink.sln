@@ -23,6 +23,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "DaemonDo", "src\DaemonDo\Da
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "VideoFileService.IntegrationTests", "tests\VideoFileService.IntegrationTests\VideoFileService.IntegrationTests.csproj", "{2F226407-1BBC-4F97-877F-F6A727502241}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "WinslowUI", "src\WinslowUI\WinslowUI.csproj", "{C5B22036-CC4E-4A16-9A62-E38E164BE902}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -61,6 +63,10 @@ Global
 		{2F226407-1BBC-4F97-877F-F6A727502241}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{2F226407-1BBC-4F97-877F-F6A727502241}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{2F226407-1BBC-4F97-877F-F6A727502241}.Release|Any CPU.Build.0 = Release|Any CPU
+		{C5B22036-CC4E-4A16-9A62-E38E164BE902}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{C5B22036-CC4E-4A16-9A62-E38E164BE902}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{C5B22036-CC4E-4A16-9A62-E38E164BE902}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{C5B22036-CC4E-4A16-9A62-E38E164BE902}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
@@ -74,5 +80,6 @@ Global
 		{8C73E8B6-2F12-445E-B34D-D0E5BDDBA8C6} = {10C16F61-1B75-4722-8BEF-FEA224B92F13}
 		{558F1AF8-BB67-4765-88D9-7C029A74EB54} = {F3B05BB1-3F82-4A60-874B-808CB3938381}
 		{2F226407-1BBC-4F97-877F-F6A727502241} = {10C16F61-1B75-4722-8BEF-FEA224B92F13}
+		{C5B22036-CC4E-4A16-9A62-E38E164BE902} = {F3B05BB1-3F82-4A60-874B-808CB3938381}
 	EndGlobalSection
 EndGlobal
