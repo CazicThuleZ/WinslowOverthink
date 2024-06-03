@@ -476,4 +476,7 @@ $RECYCLE.BIN/
 # Windows shortcuts
 *.lnk
 
+*.png
 appsettings.Development.json
+appsettings.json
+Google.Apis.Auth.OAuth2.Responses.TokenResponse*

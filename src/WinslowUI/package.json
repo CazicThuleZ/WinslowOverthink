@@ -1,0 +1,22 @@
+{
+  "name": "winslowui",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "chartjs": "^0.3.24",
+    "flot": "^4.2.6",
+    "font-awesome": "^4.7.0",
+    "metismenu": "^3.0.7",
+    "pace": "^0.0.4",
+    "popper": "^1.0.1",
+    "slimscroll": "^0.9.1",
+    "sparkline": "^0.2.0"
+  }
+}

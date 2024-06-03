@@ -7,7 +7,7 @@
             "type": "coreclr",
             "request": "launch",
             "preLaunchTask": "build",
-            "program": "${workspaceFolder}/src/DaemonDo/bin/Debug/net7.0/DaemonDo.dll",
+            "program": "${workspaceFolder}/src/DaemonAtorService/bin/Debug/net7.0/DaemonAtorService.dll",
             "args": [],
             "cwd": "${workspaceFolder}",
             "stopAtEntry": false,
