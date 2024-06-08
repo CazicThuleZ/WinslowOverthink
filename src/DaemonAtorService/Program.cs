@@ -3,6 +3,9 @@ using Microsoft.Extensions.Hosting;
 using Quartz;
 using Quartz.Impl;
 using Quartz.Spi;
+using Serilog;
+using Serilog.Events;
+using Microsoft.Extensions.Configuration;
 
 namespace DaemonAtorService
 {
@@ -10,11 +13,33 @@ namespace DaemonAtorService
     {
         public static void Main(string[] args)
         {
-            CreateHostBuilder(args).Build().Run();
+            var configuration = new ConfigurationBuilder()
+                .AddJsonFile("appsettings.json")
+                 .Build();
+
+            Log.Logger = new LoggerConfiguration()
+                .ReadFrom.Configuration(configuration)
+                .CreateLogger();
+
+            try
+            {
+                Log.Information("Starting up the service");
+                CreateHostBuilder(args).Build().Run();
+            }
+            catch (Exception ex)
+            {
+                Log.Fatal(ex, "There was a problem starting the service");
+                throw;
+            }
+            finally
+            {
+                Log.CloseAndFlush();
+            }
         }
 
         public static IHostBuilder CreateHostBuilder(string[] args) =>
             Host.CreateDefaultBuilder(args)
+                .UseSerilog()
                 .ConfigureAppConfiguration((context, config) =>
                 {
                     var env = context.HostingEnvironment;
@@ -38,7 +63,7 @@ namespace DaemonAtorService
                     services.Configure<GlobalSettings>(context.Configuration.GetSection("GlobalSettings"));
 
                     services.AddSingleton<GmailServiceHelper>();
-                    
+
                     var kernel = SemanticKernelConfig.InitializeKernel(context.Configuration);
                     services.AddSingleton(kernel);
 

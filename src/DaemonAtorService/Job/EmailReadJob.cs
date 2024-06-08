@@ -66,6 +66,7 @@ public class EmailReadJob : IJob
 
             if (allMessages.Count > 0)
             {
+                _logger.LogInformation("Unread messages found in Inbox: {allMessages.Count}.", allMessages.Count.ToString());
                 foreach (var messageItem in allMessages)
                 {
                     var message = await service.Users.Messages.Get("me", messageItem.Id).ExecuteAsync();
@@ -130,7 +131,7 @@ public class EmailReadJob : IJob
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "EmailReadJob encountered an error");
+            _logger.LogError("EmailReadJob encountered an error: {exception}", ex.Message);            
         }
 
         _logger.LogInformation("EmailReadJob completed at {time}", DateTimeOffset.Now);

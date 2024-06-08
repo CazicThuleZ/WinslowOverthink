@@ -53,25 +53,12 @@ public class CalorieIntakeJob : IJob
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "CalorieIntakeJob encountered an error");
+            _logger.LogError("CalorieIntakeJob encountered an error: {exception}", ex.Message);
         }
 
         _logger.LogInformation("CalorieIntakeJob completed at {time}", DateTimeOffset.Now);
         return Task.CompletedTask;
     }
-    // private bool LogDietData(string fileName, List<DietStatistic> dietStatistics)
-    // {
-    //     _logger.LogInformation("Processing file: {fileName}", fileName);
-
-    //     foreach (var stat in dietStatistics)
-    //     {
-    //         _logger.LogInformation("Date: {Date}, Name: {Name}, Type: {Type}, Quantity: {Quantity}, Units: {Units}, Calories: {Calories}, Fat: {Fat}, Protein: {Protein}, Carbohydrates: {Carbohydrates}, Saturated Fat: {SaturatedFat}, Sugars: {Sugars}, Fiber: {Fiber}, Cholesterol: {Cholesterol}, Sodium: {Sodium}",
-    //             stat.Date, stat.Name, stat.Type, stat.Quantity, stat.Units, stat.Calories, stat.Fat, stat.Protein, stat.Carbohydrates, stat.SaturatedFat, stat.Sugars, stat.Fiber, stat.Cholesterol, stat.Sodium);
-    //     }
-
-    //     return true;
-    // }
-
     private void LogStat(string statName, double statValue, DateTime reportDate, string calorieReportPath)
     {
         if (statValue == 0)

@@ -8,13 +8,15 @@ namespace DaemonAtorService;
 
 public class GmailServiceHelper
 {
-    static string[] Scopes = { GmailService.Scope.GmailReadonly , GmailService.Scope.GmailModify};
+    static string[] Scopes = { GmailService.Scope.GmailReadonly, GmailService.Scope.GmailModify };
     public static string ApplicationName = "Winslow Overthinker";
     private readonly GmailApiSettings _gmailApiSettings;
+    private readonly ILogger<EmailReadJob> _logger;
 
-    public GmailServiceHelper(IOptions<GmailApiSettings> gmailApiSettings)
+    public GmailServiceHelper(ILogger<EmailReadJob> logger, IOptions<GmailApiSettings> gmailApiSettings)
     {
         _gmailApiSettings = gmailApiSettings.Value;
+        _logger = logger;
     }
 
     public async Task<UserCredential> GetUserCredentialAsync()
@@ -35,7 +37,10 @@ public class GmailServiceHelper
             new FileDataStore(credPath, true));
 
         if (credential.Token.IsStale)
+        {
+            _logger.LogInformation("Refreshed Oauth Token {time}", DateTimeOffset.Now);
             await credential.RefreshTokenAsync(CancellationToken.None);
+        }
 
         return credential;
     }
