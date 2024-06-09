@@ -1,0 +1,10 @@
+Extract the following information from the email content:
+1. Sent date
+2. Account balance
+            
+Email content: 
+{{$emailBody}}
+
+Response format:    
+Sent date: [date]
+Account balance: [balance]

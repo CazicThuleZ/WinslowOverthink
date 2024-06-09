@@ -19,6 +19,7 @@ public class EmailReadJob : IJob
     private readonly GmailServiceHelper _gmailServiceHelper;
     private readonly string _emailSaveDirectory;
     private readonly string _dashboardLogLocation;
+    private readonly string _semanticKernelPluginLocation;
     private readonly string _attachmentSaveLocation;
     private readonly Kernel _kernel;
 
@@ -28,6 +29,7 @@ public class EmailReadJob : IJob
         _gmailServiceHelper = gmailServiceHelper;
         _emailSaveDirectory = gmailApiSettings.Value.EmailSaveDirectory;
         _dashboardLogLocation = globalSettings.Value.DashboardLogLocation;
+        _semanticKernelPluginLocation = globalSettings.Value.SemanticKernelPluginsPath;
         _attachmentSaveLocation = gmailApiSettings.Value.AttachmentSaveLocation;
         _kernel = kernel;
     }
@@ -131,7 +133,7 @@ public class EmailReadJob : IJob
         }
         catch (Exception ex)
         {
-            _logger.LogError("EmailReadJob encountered an error: {exception}", ex.Message);            
+            _logger.LogError("EmailReadJob encountered an error: {exception}", ex.Message);
         }
 
         _logger.LogInformation("EmailReadJob completed at {time}", DateTimeOffset.Now);
@@ -139,28 +141,18 @@ public class EmailReadJob : IJob
 
     public async Task<(DateTime SentDate, decimal Balance)> ParseAccountBalancesAsync(string emailBody)
     {
-        var prompt = $@"
-            Extract the following information from the email content:
-            1. Sent date
-            2. Account balance
-            
-            Email content: 
-            {emailBody}
-
-            Response format:
-            Sent date: [date]
-            Account balance: [balance]
-        ";
 
         DateTime sentDate = DateTime.MinValue;
         Decimal accountBalance = 0;
 
-        // Give the AI five chances to get a correct response.
+        var emailPluginsPath = Path.Combine(_semanticKernelPluginLocation, "InterpretEmails");
+        var emailPluginsFunction = _kernel.ImportPluginFromPromptDirectory(emailPluginsPath);
+        var arguments = new KernelArguments() { { "emailBody", emailBody } };
+
+        // Give the AI five chances to get a correct response.  The temp is set to 0.0, so it should be precise.
         for (int i = 0; i < 5; i++)
         {
-            var response = await _kernel.InvokePromptAsync(prompt);
-
-            var re = response.ToString();
+            var response = await _kernel.InvokeAsync(emailPluginsFunction["DeriveBalance"], arguments);
 
             var sentDatePattern = @"Sent date:\s*(?<date>.*)";
             var balancePattern = @"Account balance:\s*\$(?<balance>[0-9,]+(\.\d{2})?)";
@@ -172,11 +164,11 @@ public class EmailReadJob : IJob
             {
                 sentDate = DateTime.Parse(dateMatch.Groups["date"].Value.Trim());
                 accountBalance = decimal.Parse(balanceMatch.Groups["balance"].Value.Trim(), NumberStyles.Currency, CultureInfo.InvariantCulture);
-                break;            
-            }                
+                break;
+            }
         }
 
-        if  (sentDate == DateTime.MinValue || accountBalance == 0)
+        if (sentDate == DateTime.MinValue || accountBalance == 0)
             throw new FormatException("Unable to parse the email content.");
 
         return (sentDate, accountBalance);
