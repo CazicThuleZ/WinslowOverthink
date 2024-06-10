@@ -18,9 +18,9 @@ public class EmailReadJob : IJob
     private readonly ILogger<EmailReadJob> _logger;
     private readonly GmailServiceHelper _gmailServiceHelper;
     private readonly string _emailSaveDirectory;
-    private readonly string _dashboardLogLocation;
+    public readonly string _dashboardLogLocation;
     private readonly string _semanticKernelPluginLocation;
-    private readonly string _attachmentSaveLocation;
+    public readonly string _attachmentSaveLocation;
     private readonly Kernel _kernel;
 
     public EmailReadJob(ILogger<EmailReadJob> logger, GmailServiceHelper gmailServiceHelper, IOptions<GmailApiSettings> gmailApiSettings, IOptions<GlobalSettings> globalSettings, Kernel kernel)
@@ -87,28 +87,14 @@ public class EmailReadJob : IJob
                             throw new FormatException("Unable to parse the date.");
 
                         var logMessage = string.Empty;
-                        switch (subject)
+                        var handlerFactory = new EmailHandlerFactory(this);
+                        var handler = handlerFactory.GetHandler(subject);
+
+                        if (handler != null)
                         {
-                            case var s when s.Contains("Lookout CU balance alert", StringComparison.OrdinalIgnoreCase):
-                                logMessage = await ParseAccountBalanceAlert(subject, message, emailDate);
-                                if (!string.IsNullOrEmpty(logMessage))
-                                    LogForDashboard("Checking Account " + logMessage, subject, _dashboardLogLocation, _attachmentSaveLocation, "CUChecking", message, service);
-                                break;
-                            case var s when s.Contains("Lose It! Daily Summary", StringComparison.OrdinalIgnoreCase):
-                                logMessage = ParseLoseItSummary(subject, message, emailDate);
-                                if (!string.IsNullOrEmpty(logMessage))
-                                    LogForDashboard(logMessage, subject, _dashboardLogLocation, _attachmentSaveLocation, "CalorieReport", message, service);
-                                break;
-                            case var s when s.Contains("Fidelity Alerts", StringComparison.OrdinalIgnoreCase):
-                                logMessage = await ParseAccountBalanceAlert(subject, message, emailDate);
-                                if (!string.IsNullOrEmpty(logMessage))
-                                    LogForDashboard("Health Savings " + logMessage, subject, _dashboardLogLocation, _attachmentSaveLocation, "FidelityHealth", message, service);
-                                break;
-                            case var s when s.Contains("Current Balance Alert", StringComparison.OrdinalIgnoreCase):
-                                logMessage = await ParseAccountBalanceAlert(subject, message, emailDate);
-                                if (!string.IsNullOrEmpty(logMessage))
-                                    LogForDashboard("Discover Savings " + logMessage, subject, _dashboardLogLocation, _attachmentSaveLocation, "DiscoverSavings", message, service);
-                                break;
+                            logMessage = await handler.HandleAsync(subject, message, emailDate, service);
+                            if (!string.IsNullOrEmpty(logMessage))
+                                _logger.LogInformation(logMessage);
                         }
 
                         SaveEmailToFile(message, _emailSaveDirectory);

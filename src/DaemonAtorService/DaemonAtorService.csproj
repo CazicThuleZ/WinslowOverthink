@@ -32,5 +32,9 @@
     <Content Include="SKPlugins\**\*">
         <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </Content>
+  </ItemGroup>
+  <ItemGroup>
+    <Folder Include="Configuration\" />
+    <Folder Include="Handlers\EmailParsingHandlers\" />
   </ItemGroup>  
 </Project>
