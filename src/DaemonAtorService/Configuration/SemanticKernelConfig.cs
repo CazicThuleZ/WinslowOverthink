@@ -9,10 +9,13 @@ public static class SemanticKernelConfig
     {
         var openAiApiKey = configuration["GlobalSettings:OpenApiKey"];
         var openAiApiModel = configuration["GlobalSettings:OpenApiModel"];
+        var semanticKernelPluginLocation = configuration["GlobalSettings:SemanticKernelPluginsPath"];
 
         var builder = Kernel.CreateBuilder();
 
         builder.Plugins.AddFromType<ConversationSummaryPlugin>();
+        builder.Plugins.AddFromPromptDirectory(Path.Combine(semanticKernelPluginLocation, "PolishJournal"));        
+        builder.Plugins.AddFromPromptDirectory(Path.Combine(semanticKernelPluginLocation, "InterpretEmails"));
         builder.Services.AddOpenAIChatCompletion(openAiApiModel, openAiApiKey);
 
         var kernel = builder.Build();

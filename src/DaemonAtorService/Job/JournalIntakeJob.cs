@@ -26,7 +26,6 @@ public class JournalIntakeJob : IJob
     private readonly string _saveHyperlinksFile;
     private readonly KernelPlugin _journalPluginsFunction;
     private readonly string _invalidChars;
-    private readonly string _semanticKernelPluginLocation;
     public readonly string _dashboardLogLocation;
     public readonly string _openApiModel;
     public int _totalPromptTokens { get; set; }
@@ -45,11 +44,9 @@ public class JournalIntakeJob : IJob
         _hashTagLookup = LoadJsonList<HashTagXref>(_saveHashtagsFile);
         _hyperlinkage = LoadJsonList<Hyperlinkage>(_saveHyperlinksFile);
 
-        _semanticKernelPluginLocation = globalSettings.Value.SemanticKernelPluginsPath;
-
         var loadedPlugins = _kernel.Plugins.ToList();
-        if (!loadedPlugins.Any(plugin => plugin.Name.Equals("PolishJournal", StringComparison.OrdinalIgnoreCase)))
-            _journalPluginsFunction = _kernel.ImportPluginFromPromptDirectory(Path.Combine(_semanticKernelPluginLocation, "PolishJournal"));
+        if (loadedPlugins.Any(plugin => plugin.Name.Equals("PolishJournal", StringComparison.OrdinalIgnoreCase)))
+            _journalPluginsFunction = _kernel.Plugins.FirstOrDefault(plugin => plugin.Name.Equals("PolishJournal", StringComparison.OrdinalIgnoreCase));
 
         _invalidChars = new string(Path.GetInvalidFileNameChars()) + new string(Path.GetInvalidPathChars());
     }
@@ -59,6 +56,12 @@ public class JournalIntakeJob : IJob
 
         try
         {
+            if (_journalPluginsFunction == null)
+            {
+                _logger.LogInformation("PolishJournal plugin not loaded. Aborting. {time}", DateTimeOffset.Now);
+                throw new Exception("PolishJournal plugin not loaded.");
+            }
+
             if (!Directory.Exists(_OutputFilePath))
                 Directory.CreateDirectory(_OutputFilePath);
 
