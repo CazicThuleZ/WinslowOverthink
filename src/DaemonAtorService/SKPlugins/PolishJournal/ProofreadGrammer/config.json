@@ -1,0 +1,21 @@
+{
+    "schema": 1,
+    "description": "Apply punctuation and grammar corrections to a journal entry.",
+    "execution_settings": {
+      "default": {
+        "max_tokens": 2000,
+        "temperature": 0.3,
+        "top_p": 0.0,
+        "presence_penalty": 0.0,
+        "frequency_penalty": 0.0
+      }
+    },
+    "input_variables": [
+      {
+        "name": "journalEntry",
+        "description": "Journal upchuck to be edited",
+        "default": "",
+        "is_required": true
+      }
+    ]  
+  }

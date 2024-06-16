@@ -7,6 +7,7 @@ using System.Text.Json;
 using DaemonAtorService;
 using Microsoft.Extensions.Options;
 
+namespace DaemonAtorService;
 
 [DisallowConcurrentExecution]
 public class CryptoPriceJob : IJob

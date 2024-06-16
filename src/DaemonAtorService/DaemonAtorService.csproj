@@ -6,6 +6,7 @@
     <ImplicitUsings>enable</ImplicitUsings>
     <UserSecretsId>dotnet-DaemonAtorService-0cfe8788-5f0d-42ad-8195-07ac5394d0e0</UserSecretsId>
     <NoWarn>CA1416</NoWarn>
+    <NoWarn>SKEXP0050</NoWarn>
     <EnableDefaultContentItems>false</EnableDefaultContentItems>
   </PropertyGroup>
 
@@ -32,6 +33,14 @@
     <Content Include="SKPlugins\**\*">
         <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </Content>
+  </ItemGroup>
+  <ItemGroup>
+    <None Remove="SKPlugins\PolishJournal\CatagorizeContent\config.json" />
+    <None Remove="SKPlugins\PolishJournal\CatagorizeContent\skprompt.txt" />
+    <None Remove="SKPlugins\PolishJournal\ProofreadGrammer\config.json" />
+    <None Remove="SKPlugins\PolishJournal\ProofreadGrammer\skprompt.txt" />
+    <None Remove="SKPlugins\PolishJournal\SmoothUpchuck\config.json" />
+    <None Remove="SKPlugins\PolishJournal\SmoothUpchuck\skprompt.txt" />
   </ItemGroup>
   <ItemGroup>
     <Folder Include="Configuration\" />

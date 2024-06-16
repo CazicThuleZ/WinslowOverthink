@@ -57,6 +57,7 @@ namespace DaemonAtorService
                     if (jobSchedules == null)
                         throw new Exception("Failed to load ScheduleSettings from configuration.");
 
+                    services.Configure<JournalSettings>(context.Configuration.GetSection("JournalSettings"));
                     services.Configure<CryptoSettings>(context.Configuration.GetSection("CryptoSettings"));
                     services.Configure<GmailApiSettings>(context.Configuration.GetSection("GmailApiSettings"));
                     services.Configure<CsvFileSettings>(context.Configuration.GetSection("CsvFileSettings"));
@@ -70,10 +71,11 @@ namespace DaemonAtorService
                     services.AddHostedService<Worker>();
 
                     services.AddQuartz(q =>
-                    {
+                    {                                                
                         q.AddJobAndTrigger<CryptoPriceJob>(jobSchedules.CryptoPriceJob);
                         q.AddJobAndTrigger<EmailReadJob>(jobSchedules.EmailReadJob);
                         q.AddJobAndTrigger<CalorieIntakeJob>(jobSchedules.CalorieIntakeJob);
+                        q.AddJobAndTrigger<JournalIntakeJob>(jobSchedules.JournalIntakeJob);
                     });
 
                     services.AddQuartzHostedService(q => q.WaitForJobsToComplete = true);

@@ -1,0 +1,15 @@
+Use the dependency grammar linguistic framework rather than phrase structure grammar to Rewrite
+this content. The idea is that the closer together each pair of words you’re connecting are, the easier the
+copy will be to comprehend. The content is presented in first person narrative model, do not deviate from that model. 
+
+Adding metaphors and flourishes of grammar is acceptable.
+
+[BANNED PHRASES]
+This article
+This document
+This page
+This material
+The author of this text
+
+Content: {{$journalEntry}}
+Start.

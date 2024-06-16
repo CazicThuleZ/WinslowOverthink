@@ -1,0 +1,21 @@
+{
+    "schema": 1,
+    "description": "Interpret the body of a journal entry and add hashtags to the entry based on the sentiment",
+    "execution_settings": {
+      "default": {
+        "max_tokens": 2000,
+        "temperature": 0.8,
+        "top_p": 0.0,
+        "presence_penalty": 0.0,
+        "frequency_penalty": 0.0
+      }
+    },
+    "input_variables": [
+      {
+        "name": "journalEntry",
+        "description": "Upchuck content to classify",
+        "default": "",
+        "is_required": true
+      }
+    ]  
+  }

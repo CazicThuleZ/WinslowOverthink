@@ -1,0 +1,21 @@
+{
+    "schema": 1,
+    "description": "Polish a journal entry turd",
+    "execution_settings": {
+      "default": {
+        "max_tokens": 3000,
+        "temperature": 0.0,
+        "top_p": 0.0,
+        "presence_penalty": 0.7,
+        "frequency_penalty": 0.0
+      }
+    },
+    "input_variables": [
+      {
+        "name": "journalEntry",
+        "description": "Email verbiage to evaluate",
+        "default": "",
+        "is_required": true
+      }
+    ]  
+  }
