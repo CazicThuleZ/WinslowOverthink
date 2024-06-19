@@ -27,6 +27,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "WinslowUI", "src\WinslowUI\
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "DaemonAtorService", "src\DaemonAtorService\DaemonAtorService.csproj", "{A2DEC743-A336-4D0D-A4BE-0DE73B0D047E}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "DashboardService", "src\DashboardService\DashboardService.csproj", "{B16748FD-1EE4-49DD-A799-14E8433F2BC0}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -73,6 +75,10 @@ Global
 		{A2DEC743-A336-4D0D-A4BE-0DE73B0D047E}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{A2DEC743-A336-4D0D-A4BE-0DE73B0D047E}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{A2DEC743-A336-4D0D-A4BE-0DE73B0D047E}.Release|Any CPU.Build.0 = Release|Any CPU
+		{B16748FD-1EE4-49DD-A799-14E8433F2BC0}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{B16748FD-1EE4-49DD-A799-14E8433F2BC0}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{B16748FD-1EE4-49DD-A799-14E8433F2BC0}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{B16748FD-1EE4-49DD-A799-14E8433F2BC0}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
@@ -88,5 +94,6 @@ Global
 		{2F226407-1BBC-4F97-877F-F6A727502241} = {10C16F61-1B75-4722-8BEF-FEA224B92F13}
 		{C5B22036-CC4E-4A16-9A62-E38E164BE902} = {F3B05BB1-3F82-4A60-874B-808CB3938381}
 		{A2DEC743-A336-4D0D-A4BE-0DE73B0D047E} = {F3B05BB1-3F82-4A60-874B-808CB3938381}
+		{B16748FD-1EE4-49DD-A799-14E8433F2BC0} = {F3B05BB1-3F82-4A60-874B-808CB3938381}
 	EndGlobalSection
 EndGlobal

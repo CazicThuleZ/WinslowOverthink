@@ -76,7 +76,7 @@ public class EmailReadJob : IJob
                 request.PageToken = response.NextPageToken;
             } while (!string.IsNullOrEmpty(response.NextPageToken));
 
-            x
+            if (allMessages.Count > 0)
             {
                 _logger.LogInformation("Unread messages found in Inbox: {allMessages.Count}.", allMessages.Count.ToString());
                 foreach (var messageItem in allMessages)

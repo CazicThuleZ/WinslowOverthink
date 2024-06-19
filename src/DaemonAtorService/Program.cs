@@ -62,6 +62,7 @@ namespace DaemonAtorService
                     services.Configure<GmailApiSettings>(context.Configuration.GetSection("GmailApiSettings"));
                     services.Configure<CsvFileSettings>(context.Configuration.GetSection("CsvFileSettings"));
                     services.Configure<GlobalSettings>(context.Configuration.GetSection("GlobalSettings"));
+                    services.Configure<List<DirectorySyncSettings>>(context.Configuration.GetSection("DirectorySyncSettings"));
 
                     services.AddSingleton<GmailServiceHelper>();
 
@@ -76,6 +77,7 @@ namespace DaemonAtorService
                         q.AddJobAndTrigger<EmailReadJob>(jobSchedules.EmailReadJob);
                         q.AddJobAndTrigger<CalorieIntakeJob>(jobSchedules.CalorieIntakeJob);
                         q.AddJobAndTrigger<JournalIntakeJob>(jobSchedules.JournalIntakeJob);
+                        q.AddJobAndTrigger<DirectorySyncJob>(jobSchedules.DirectorySyncJob);                        
                     });
 
                     services.AddQuartzHostedService(q => q.WaitForJobsToComplete = true);
