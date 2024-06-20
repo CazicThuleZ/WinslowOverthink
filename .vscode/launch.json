@@ -13,7 +13,7 @@
             "stopAtEntry": false,
             "console": "internalConsole",
             "env": {
-                "DAEMONDO_ENVIRONMENT": "Development"
+                "ENVIRONMENT": "Development"
             }            
         },
         {

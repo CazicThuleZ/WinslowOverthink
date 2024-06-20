@@ -1,5 +1,6 @@
-FROM mcr.microsoft.com/dotnet/aspnet:7.0 AS base
+FROM mcr.microsoft.com/dotnet/sdk:7.0 as build
 WORKDIR /app
+EXPOSE 80
 
 # copy all .csproj files and restore as distinct layers.   Use of the same COPY command
 # for every dockerfile in the project to take advantage of docker caching
@@ -15,15 +16,18 @@ COPY src/WinslowUI/WinslowUI.csproj src/WinslowUI/WinslowUI.csproj
 COPY tests/mediaService.UnitTests/mediaService.UnitTests.csproj tests/mediaService.UnitTests/mediaService.UnitTests.csproj
 COPY tests/VideoFileService.IntegrationTests/VideoFileService.IntegrationTests.csproj tests/VideoFileService.IntegrationTests/VideoFileService.IntegrationTests.csproj
 
-# Stage 1: Build the application
-FROM mcr.microsoft.com/dotnet/sdk:7.0 AS build
-WORKDIR /src
-COPY . .
-RUN dotnet restore "src/WinslowUI/WinslowUI.csproj"
-RUN dotnet publish "src/WinslowUI/WinslowUI.csproj" -c Release -o /app/out
 
-# Stage 2: Run the application
+# Restore package deps
+RUN dotnet restore winslowoverthink.sln
+
+# Copy the app folders over
+COPY src/DashboardService src/DashboardService
+COPY src/Contracts src/Contracts
+WORKDIR /app/src/DashboardService
+RUN dotnet publish -c Release -o /app/src/out
+
+# Build runtime image
 FROM mcr.microsoft.com/dotnet/aspnet:7.0
 WORKDIR /app
-COPY --from=build /app/out .
-ENTRYPOINT ["dotnet", "WinslowUI.dll"]
+COPY --from=build /app/src/out .
+ENTRYPOINT [ "dotnet", "DashboardService.dll" ]

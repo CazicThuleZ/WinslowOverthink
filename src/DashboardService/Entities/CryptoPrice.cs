@@ -2,10 +2,10 @@
 namespace DashboardService.Entities;
 [Table("CryptoPrices")]
 
-public class CryptoPrices
+public class CryptoPrice
 {
-    public DateTime SnapshotDateUTC { get; set; }
+    public Guid Id { get; set; } 
+    public DateTime SnapshotDateUTC { get; set; } 
     public string CryptoId { get; set; }
     public decimal Price { get; set; }
-
 }
