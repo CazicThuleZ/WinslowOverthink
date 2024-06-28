@@ -6,16 +6,16 @@ public class DietStatistic
     public string Name { get; set; }
     public string Icon { get; set; }
     public string Type { get; set; }
-    public double Quantity { get; set; }
+    public decimal Quantity { get; set; }
     public string Units { get; set; }
-    public double Calories { get; set; }
+    public int Calories { get; set; }
     public int Deleted { get; set; }
-    public double Fat { get; set; }
-    public double Protein { get; set; }
-    public double Carbohydrates { get; set; }
-    public double SaturatedFat { get; set; }
-    public double Sugars { get; set; }
-    public double Fiber { get; set; }
-    public double Cholesterol { get; set; }
-    public double Sodium { get; set; }
+    public decimal Fat { get; set; }
+    public decimal Protein { get; set; }
+    public decimal Carbohydrates { get; set; }
+    public decimal SaturatedFat { get; set; }
+    public decimal Sugars { get; set; }
+    public decimal Fiber { get; set; }
+    public decimal Cholesterol { get; set; }
+    public decimal Sodium { get; set; }
 }

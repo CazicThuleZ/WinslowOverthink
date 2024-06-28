@@ -5,11 +5,11 @@ using CsvHelper.TypeConversion;
 
 namespace DaemonAtorService;
 
-public class DefaultIfInvalidDoubleConverter : DefaultTypeConverter
+public class DefaultIfInvalidDecimalConverter : DefaultTypeConverter
 {
-    private readonly double? _defaultValue;
+    private readonly decimal? _defaultValue;
 
-    public DefaultIfInvalidDoubleConverter(double? defaultValue)
+    public DefaultIfInvalidDecimalConverter(decimal? defaultValue)
     {
         _defaultValue = defaultValue;
     }
@@ -22,7 +22,7 @@ public class DefaultIfInvalidDoubleConverter : DefaultTypeConverter
         // Remove commas from the number
         text = text.Replace(",", "");
 
-        if (double.TryParse(text, NumberStyles.Any, CultureInfo.InvariantCulture, out double result))
+        if (decimal.TryParse(text, NumberStyles.Any, CultureInfo.InvariantCulture, out decimal result))
             return result;
 
         return _defaultValue;
