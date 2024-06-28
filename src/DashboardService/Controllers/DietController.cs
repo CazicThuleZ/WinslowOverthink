@@ -56,4 +56,74 @@ public class DietController : ControllerBase
 
         return CreatedAtAction(nameof(GetDietDiary), new { endDate = dietStat.SnapshotDateUTC }, dietStatDto);
     }
+
+    [HttpPut("update-weight")]
+    public async Task<ActionResult> UpdateWeight(DateTime date, decimal weight)
+    {
+        var snapshotDateUtc = DateTime.SpecifyKind(date, DateTimeKind.Utc);
+
+        var existingDietRecord = await _context.DietStats
+            .FirstOrDefaultAsync(diet => diet.SnapshotDateUTC == snapshotDateUtc);
+
+        if (existingDietRecord == null)
+            return NotFound("DietStat for the given date not found.");
+
+        existingDietRecord.Weight = weight;
+        _context.DietStats.Update(existingDietRecord);
+
+        var result = await _context.SaveChangesAsync() > 0;
+        if (!result)
+            return BadRequest("Could not update weight.");
+
+        return NoContent();
+    }
+
+    [HttpPost("calculate-food-price")]
+    public async Task<ActionResult<decimal>> CalculateFoodPrice([FromBody] FoodPriceDto foodPriceDto)
+    {
+        var foodPrice = await _context.FoodPrices
+            .FirstOrDefaultAsync(fp =>
+                fp.Name.Equals(foodPriceDto.Name, StringComparison.OrdinalIgnoreCase) &&
+                fp.UnitOfMeasure.Equals(foodPriceDto.UnitOfMeasure, StringComparison.OrdinalIgnoreCase));
+
+        if (foodPrice == null)
+            return NotFound("Food price not found.");
+
+        var totalPrice = foodPrice.Price * foodPriceDto.Quantity;
+        return Ok(totalPrice);
+    }
+
+    [HttpPost("update-food-price")]
+    public async Task<ActionResult<decimal>> UpdateFoodPrice([FromBody] FoodPriceDto foodPriceDto)
+    {
+        var foodPrice = await _context.FoodPrices
+            .FirstOrDefaultAsync(fp =>
+                fp.Name.Equals(foodPriceDto.Name, StringComparison.OrdinalIgnoreCase) &&
+                fp.UnitOfMeasure.Equals(foodPriceDto.UnitOfMeasure, StringComparison.OrdinalIgnoreCase));
+
+        if (foodPrice != null)
+        {
+            foodPrice.Price = foodPriceDto.Price;
+            foodPrice.LastUpdateDateUTC = DateTime.UtcNow;
+            _context.FoodPrices.Update(foodPrice);
+        }
+        else
+        {
+            foodPrice = new FoodPrice
+            {
+                Id = Guid.NewGuid(),
+                Name = foodPriceDto.Name,
+                UnitOfMeasure = foodPriceDto.UnitOfMeasure,
+                Price = foodPriceDto.Price,
+                LastUpdateDateUTC = DateTime.UtcNow
+            };
+            _context.FoodPrices.Add(foodPrice);
+        }
+
+        var result = await _context.SaveChangesAsync();
+        if (result <= 0)
+            return BadRequest("Could not update or create the food price record.");
+
+        return Ok(foodPrice.Price);
+    }
 }
