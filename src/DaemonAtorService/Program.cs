@@ -60,11 +60,20 @@ namespace DaemonAtorService
                     services.Configure<JournalSettings>(context.Configuration.GetSection("JournalSettings"));
                     services.Configure<CryptoSettings>(context.Configuration.GetSection("CryptoSettings"));
                     services.Configure<GmailApiSettings>(context.Configuration.GetSection("GmailApiSettings"));
-                    services.Configure<CsvFileSettings>(context.Configuration.GetSection("CsvFileSettings"));
+                    services.Configure<ArchiveFileSettings>(context.Configuration.GetSection("ArchiveFileSettings"));
                     services.Configure<GlobalSettings>(context.Configuration.GetSection("GlobalSettings"));
                     services.Configure<List<DirectorySyncSettings>>(context.Configuration.GetSection("DirectorySyncSettings"));
 
                     services.AddSingleton<GmailServiceHelper>();
+                    services.AddHttpClient();
+                    services.AddSingleton<LogHandlerFactory>();
+
+                    services.AddTransient<BankAccountBalanceHandler>();
+                    services.AddTransient<LoseItDailySummaryHandler>();
+                    services.AddTransient<ActivityCountHandler>();
+                    services.AddTransient<ActivityDurationHandler>();
+                    services.AddTransient<DietScaleHandler>();                    
+                    services.AddTransient<OtherLogHandler>();                                        
 
                     var kernel = SemanticKernelConfig.InitializeKernel(context.Configuration);
                     services.AddSingleton(kernel);
@@ -72,12 +81,12 @@ namespace DaemonAtorService
                     services.AddHostedService<Worker>();
 
                     services.AddQuartz(q =>
-                    {                                                
+                    {
                         q.AddJobAndTrigger<CryptoPriceJob>(jobSchedules.CryptoPriceJob);
                         q.AddJobAndTrigger<EmailReadJob>(jobSchedules.EmailReadJob);
-                        q.AddJobAndTrigger<CalorieIntakeJob>(jobSchedules.CalorieIntakeJob);
                         q.AddJobAndTrigger<JournalIntakeJob>(jobSchedules.JournalIntakeJob);
-                        q.AddJobAndTrigger<DirectorySyncJob>(jobSchedules.DirectorySyncJob);                        
+                        q.AddJobAndTrigger<DirectorySyncJob>(jobSchedules.DirectorySyncJob);
+                        q.AddJobAndTrigger<DatabaseSnapshotsJob>(jobSchedules.DatabaseSnapshotsJob);
                     });
 
                     services.AddQuartzHostedService(q => q.WaitForJobsToComplete = true);

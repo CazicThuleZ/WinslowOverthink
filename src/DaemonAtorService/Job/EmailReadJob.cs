@@ -32,7 +32,7 @@ public class EmailReadJob : IJob
         _attachmentSaveLocation = gmailApiSettings.Value.AttachmentSaveLocation;
         _kernel = kernel;
 
-        -
+        var loadedPlugins = _kernel.Plugins.ToList();
         if (loadedPlugins.Any(plugin => plugin.Name.Equals("InterpretEmails", StringComparison.OrdinalIgnoreCase)))
             _emailPluginsFunction = _kernel.Plugins.FirstOrDefault(plugin => plugin.Name.Equals("InterpretEmails", StringComparison.OrdinalIgnoreCase));
 

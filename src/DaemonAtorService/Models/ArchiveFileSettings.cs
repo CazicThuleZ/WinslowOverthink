@@ -1,7 +1,7 @@
 ﻿namespace DaemonAtorService;
 
-public class CsvFileSettings
+public class ArchiveFileSettings
 {
-    public string CsvFilePath { get; set; }
+    public string ArchiveFilePath { get; set; }
     public int RetainArchiveDays { get; set; }
 }

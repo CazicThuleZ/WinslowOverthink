@@ -18,7 +18,7 @@ public class DietController : ControllerBase
     {
         _context = context;
         _mapper = mapper;
-    }
+    }    
 
     [HttpGet("get-diet-diary")]
     public async Task<ActionResult<List<DietStatDto>>> GetDietDiary(DateTime beginDate, DateTime endDate)
@@ -78,28 +78,32 @@ public class DietController : ControllerBase
         return NoContent();
     }
 
-    [HttpPost("calculate-food-price")]
-    public async Task<ActionResult<decimal>> CalculateFoodPrice([FromBody] FoodPriceDto foodPriceDto)
+    [HttpGet("calculate-food-price")]
+    public async Task<ActionResult<decimal>> CalculateFoodPrice([FromQuery] string name, [FromQuery] string unitOfMeasure, [FromQuery] decimal quantity)
     {
+
+        if (string.IsNullOrEmpty(name) || string.IsNullOrEmpty(unitOfMeasure) || quantity == 0)
+            return BadRequest("Invalid input parameters.");
+
         var foodPrice = await _context.FoodPrices
             .FirstOrDefaultAsync(fp =>
-                fp.Name.Equals(foodPriceDto.Name, StringComparison.OrdinalIgnoreCase) &&
-                fp.UnitOfMeasure.Equals(foodPriceDto.UnitOfMeasure, StringComparison.OrdinalIgnoreCase));
+                fp.Name.ToLower() == name.ToLower() &&
+                fp.UnitOfMeasure.ToLower() == unitOfMeasure.ToLower());                
 
         if (foodPrice == null)
             return NotFound("Food price not found.");
 
-        var totalPrice = foodPrice.Price * foodPriceDto.Quantity;
+        var totalPrice = foodPrice.Price * quantity;
         return Ok(totalPrice);
     }
 
-    [HttpPost("update-food-price")]
-    public async Task<ActionResult<decimal>> UpdateFoodPrice([FromBody] FoodPriceDto foodPriceDto)
+    [HttpPost("update-or-add-food-price")]
+    public async Task<ActionResult<decimal>> UpdateOrAddFoodPrice([FromBody] FoodPriceDto foodPriceDto)
     {
         var foodPrice = await _context.FoodPrices
             .FirstOrDefaultAsync(fp =>
-                fp.Name.Equals(foodPriceDto.Name, StringComparison.OrdinalIgnoreCase) &&
-                fp.UnitOfMeasure.Equals(foodPriceDto.UnitOfMeasure, StringComparison.OrdinalIgnoreCase));
+                fp.Name.ToLower() == foodPriceDto.Name.ToLower() &&
+                fp.UnitOfMeasure.ToLower() == foodPriceDto.UnitOfMeasure.ToLower());
 
         if (foodPrice != null)
         {
@@ -123,6 +127,37 @@ public class DietController : ControllerBase
         var result = await _context.SaveChangesAsync();
         if (result <= 0)
             return BadRequest("Could not update or create the food price record.");
+
+        return Ok(foodPrice.Price);
+    }
+
+    [HttpPost("add-food-price")]
+    public async Task<ActionResult<decimal>> AddFoodPrice([FromBody] FoodPriceDto foodPriceDto)
+    {
+        if (string.IsNullOrEmpty(foodPriceDto.Name) || string.IsNullOrEmpty(foodPriceDto.UnitOfMeasure))
+            return BadRequest("Invalid input parameters.");
+
+        var foodPrice = await _context.FoodPrices
+            .FirstOrDefaultAsync(fp =>
+                fp.Name.ToLower() == foodPriceDto.Name.ToLower() &&
+                fp.UnitOfMeasure.ToLower() == foodPriceDto.UnitOfMeasure.ToLower());
+
+        if (foodPrice == null)
+        {
+            foodPrice = new FoodPrice
+            {
+                Id = Guid.NewGuid(),
+                Name = foodPriceDto.Name,
+                UnitOfMeasure = foodPriceDto.UnitOfMeasure,
+                Price = foodPriceDto.Price,
+                LastUpdateDateUTC = DateTime.UtcNow
+            };
+            _context.FoodPrices.Add(foodPrice);
+
+            var result = await _context.SaveChangesAsync();
+            if (result <= 0)
+                return BadRequest("Could not update or create the food price record.");
+        }
 
         return Ok(foodPrice.Price);
     }
