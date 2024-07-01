@@ -17,25 +17,19 @@ public class EmailReadJob : IJob
 {
     private readonly ILogger<EmailReadJob> _logger;
     private readonly GmailServiceHelper _gmailServiceHelper;
+    private readonly PokeTheOracle _pokeTheOracle;
     private readonly string _emailSaveDirectory;
     public readonly string _dashboardLogLocation;
     public readonly string _attachmentSaveLocation;
-    private readonly Kernel _kernel;
-    private readonly KernelPlugin _emailPluginsFunction;
 
-    public EmailReadJob(ILogger<EmailReadJob> logger, GmailServiceHelper gmailServiceHelper, IOptions<GmailApiSettings> gmailApiSettings, IOptions<GlobalSettings> globalSettings, Kernel kernel)
+    public EmailReadJob(ILogger<EmailReadJob> logger, GmailServiceHelper gmailServiceHelper, IOptions<GmailApiSettings> gmailApiSettings, IOptions<GlobalSettings> globalSettings, PokeTheOracle pokeTheOracle)
     {
         _logger = logger;
         _gmailServiceHelper = gmailServiceHelper;
         _emailSaveDirectory = gmailApiSettings.Value.EmailSaveDirectory;
         _dashboardLogLocation = globalSettings.Value.DashboardLogLocation;
         _attachmentSaveLocation = gmailApiSettings.Value.AttachmentSaveLocation;
-        _kernel = kernel;
-
-        var loadedPlugins = _kernel.Plugins.ToList();
-        if (loadedPlugins.Any(plugin => plugin.Name.Equals("InterpretEmails", StringComparison.OrdinalIgnoreCase)))
-            _emailPluginsFunction = _kernel.Plugins.FirstOrDefault(plugin => plugin.Name.Equals("InterpretEmails", StringComparison.OrdinalIgnoreCase));
-
+        _pokeTheOracle = pokeTheOracle;
     }
 
     public async Task Execute(IJobExecutionContext context)
@@ -44,12 +38,6 @@ public class EmailReadJob : IJob
 
         try
         {
-            if (_emailPluginsFunction == null)
-            {
-                _logger.LogInformation("InterpretEmails plugin not loaded.  Aborting");
-                throw new Exception("InterpretEmails plugin not loaded.");
-            }
-
             var credential = await _gmailServiceHelper.GetUserCredentialAsync();
             var service = new GmailService(new BaseClientService.Initializer()
             {
@@ -141,12 +129,11 @@ public class EmailReadJob : IJob
         DateTime sentDate = DateTime.MinValue;
         Decimal accountBalance = 0;
 
-        var arguments = new KernelArguments() { { "emailBody", emailBody } };
-
         // Give the AI five chances to get a correct response.  The temp is set to 0.0, so it should be precise.
         for (int i = 0; i < 5; i++)
         {
-            var response = await _kernel.InvokeAsync(_emailPluginsFunction["DeriveBalance"], arguments);
+            var response = await _pokeTheOracle.InvokeKernelFunctionAsync("email", "DeriveBalance", new Dictionary<string, string> { { "emailBody", emailBody } });
+            //var response = await _kernel.InvokeAsync(_emailPluginsFunction["DeriveBalance"], arguments);
 
             var sentDatePattern = @"Sent date:\s*(?<date>.*)";
             var balancePattern = @"Account balance:\s*\$(?<balance>[0-9,]+(\.\d{2})?)";

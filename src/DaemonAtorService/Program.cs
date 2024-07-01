@@ -72,8 +72,10 @@ namespace DaemonAtorService
                     services.AddTransient<LoseItDailySummaryHandler>();
                     services.AddTransient<ActivityCountHandler>();
                     services.AddTransient<ActivityDurationHandler>();
-                    services.AddTransient<DietScaleHandler>();                    
-                    services.AddTransient<OtherLogHandler>();                                        
+                    services.AddTransient<DietScaleHandler>();
+                    services.AddTransient<OtherLogHandler>();
+
+                    services.AddTransient<PokeTheOracle>();
 
                     var kernel = SemanticKernelConfig.InitializeKernel(context.Configuration);
                     services.AddSingleton(kernel);

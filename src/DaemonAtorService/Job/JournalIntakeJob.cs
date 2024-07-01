@@ -19,20 +19,17 @@ public class JournalIntakeJob : IJob
     private readonly ILogger<JournalIntakeJob> _logger;
     private readonly string _inputFilePath;
     private readonly string _OutputFilePath;
-    private readonly Kernel _kernel;
     public List<Hyperlinkage> _hyperlinkage { get; set; }
     public List<HashTagXref> _hashTagLookup { get; set; }
     private readonly string _saveHashtagsFile;
     private readonly string _saveHyperlinksFile;
-    private readonly KernelPlugin _journalPluginsFunction;
     private readonly string _invalidChars;
     public readonly string _dashboardLogLocation;
+
+    private readonly PokeTheOracle _pokeTheOracle;
     public readonly string _openApiModel;
-    public int _totalPromptTokens { get; set; }
-    public int _totalOutputTokens { get; set; }
-    public JournalIntakeJob(ILogger<JournalIntakeJob> logger, IOptions<JournalSettings> settings, IOptions<GlobalSettings> globalSettings, Kernel kernel)
+    public JournalIntakeJob(ILogger<JournalIntakeJob> logger, IOptions<JournalSettings> settings, IOptions<GlobalSettings> globalSettings, PokeTheOracle pokeTheOracle)
     {
-        _kernel = kernel;
         _logger = logger;
         _inputFilePath = settings.Value.InputDirectory;
         _OutputFilePath = settings.Value.OutputDirectory;
@@ -44,9 +41,7 @@ public class JournalIntakeJob : IJob
         _hashTagLookup = LoadJsonList<HashTagXref>(_saveHashtagsFile);
         _hyperlinkage = LoadJsonList<Hyperlinkage>(_saveHyperlinksFile);
 
-        var loadedPlugins = _kernel.Plugins.ToList();
-        if (loadedPlugins.Any(plugin => plugin.Name.Equals("PolishJournal", StringComparison.OrdinalIgnoreCase)))
-            _journalPluginsFunction = _kernel.Plugins.FirstOrDefault(plugin => plugin.Name.Equals("PolishJournal", StringComparison.OrdinalIgnoreCase));
+        _pokeTheOracle = pokeTheOracle;
 
         _invalidChars = new string(Path.GetInvalidFileNameChars()) + new string(Path.GetInvalidPathChars());
     }
@@ -56,12 +51,6 @@ public class JournalIntakeJob : IJob
 
         try
         {
-            if (_journalPluginsFunction == null)
-            {
-                _logger.LogInformation("PolishJournal plugin not loaded. Aborting. {time}", DateTimeOffset.Now);
-                throw new Exception("PolishJournal plugin not loaded.");
-            }
-
             if (!Directory.Exists(_OutputFilePath))
                 Directory.CreateDirectory(_OutputFilePath);
 
@@ -141,15 +130,6 @@ public class JournalIntakeJob : IJob
         {
             _logger.LogError(ex, "Error occurred while processing journal files.");
         }
-        finally
-        {
-            if (_totalPromptTokens > 0 || _totalOutputTokens > 0)
-            {
-                var total_tokens = _totalPromptTokens + _totalOutputTokens;
-                _logger.LogInformation($"Total prompt tokens: {_totalPromptTokens}; Total output tokens: {_totalOutputTokens}");
-                LogForDashboard($"Total tokens AI API: {total_tokens}", "JournalIntakeAITokens", _dashboardLogLocation, "TokenModel" + _openApiModel);
-            }
-        }
 
         _logger.LogInformation("Journal Intake Job completed at: {time}", DateTimeOffset.Now);
     }
@@ -172,9 +152,11 @@ public class JournalIntakeJob : IJob
         PolishedUpchuck polishedUpchuck = new PolishedUpchuck();
 
         // Apply hashtags
-        var categorizeResponse = await InvokeKernelFunctionAsync("CatagorizeContent", textChunk);
+        //var categorizeResponse = await InvokeKernelFunctionAsync("CatagorizeContent", textChunk);
+        var categorizeResponse = await _pokeTheOracle.InvokeKernelFunctionAsync("journal", "CatagorizeContent", new Dictionary<string, string> { { "journalEntry", textChunk } });
         // proofread
-        var proofreadResponse = await InvokeKernelFunctionAsync("ProofreadGrammer", textChunk);
+        //var proofreadResponse = await InvokeKernelFunctionAsync("ProofreadGrammer", textChunk);
+        var proofreadResponse = await _pokeTheOracle.InvokeKernelFunctionAsync("journal", "ProofreadGrammer", new Dictionary<string, string> { { "journalEntry", textChunk } });
 
         polishedUpchuck.Hashtags = ParseHashtags(categorizeResponse);
         polishedUpchuck.Upchuck = MarkupHyperlinks(proofreadResponse);
@@ -280,21 +262,21 @@ public class JournalIntakeJob : IJob
             writer.WriteLine($"{DateTime.Now}: {text}");
         }
     }
-    private void ProcessTokenUsage(IReadOnlyDictionary<string, object> metadata)
-    {
-        if (metadata.ContainsKey("Usage"))
-        {
-            var usage = (CompletionsUsage)metadata["Usage"];
-            _totalOutputTokens += usage.CompletionTokens;
-            _totalPromptTokens += usage.PromptTokens;
-            _logger.LogInformation($"Token usage. Input tokens: {usage.PromptTokens}; Output tokens: {usage.CompletionTokens}");
-        }
-    }
-    private async Task<string> InvokeKernelFunctionAsync(string functionName, string textChunk)
-    {
-        var arguments = new KernelArguments() { { "journalEntry", textChunk } };
-        var response = await _kernel.InvokeAsync(_journalPluginsFunction[functionName], arguments);
-        ProcessTokenUsage(response.Metadata);
-        return response.ToString();
-    }
+    // private void ProcessTokenUsage(IReadOnlyDictionary<string, object> metadata)
+    // {
+    //     if (metadata.ContainsKey("Usage"))
+    //     {
+    //         var usage = (CompletionsUsage)metadata["Usage"];
+    //         _totalOutputTokens += usage.CompletionTokens;
+    //         _totalPromptTokens += usage.PromptTokens;
+    //         _logger.LogInformation($"Token usage. Input tokens: {usage.PromptTokens}; Output tokens: {usage.CompletionTokens}");
+    //     }
+    // }
+    // private async Task<string> InvokeKernelFunctionAsync(string functionName, string textChunk)
+    // {
+    //     var arguments = new KernelArguments() { { "journalEntry", textChunk }, { "logEntry", textChunk } };
+    //     var response = await _kernel.InvokeAsync(_journalPluginsFunction[functionName], arguments);
+    //     ProcessTokenUsage(response.Metadata);
+    //     return response.ToString();
+    // }
 }
