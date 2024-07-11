@@ -22,7 +22,9 @@ public class EmailReadJob : IJob
     public readonly string _dashboardLogLocation;
     public readonly string _attachmentSaveLocation;
 
-    public EmailReadJob(ILogger<EmailReadJob> logger, GmailServiceHelper gmailServiceHelper, IOptions<GmailApiSettings> gmailApiSettings, IOptions<GlobalSettings> globalSettings, PokeTheOracle pokeTheOracle)
+    private readonly ILoggingStrategy _loggingStrategy;
+
+    public EmailReadJob(ILogger<EmailReadJob> logger, GmailServiceHelper gmailServiceHelper, IOptions<GmailApiSettings> gmailApiSettings, IOptions<GlobalSettings> globalSettings, PokeTheOracle pokeTheOracle, ILoggingStrategy loggingStrategy)
     {
         _logger = logger;
         _gmailServiceHelper = gmailServiceHelper;
@@ -30,6 +32,7 @@ public class EmailReadJob : IJob
         _dashboardLogLocation = globalSettings.Value.DashboardLogLocation;
         _attachmentSaveLocation = gmailApiSettings.Value.AttachmentSaveLocation;
         _pokeTheOracle = pokeTheOracle;
+        _loggingStrategy = loggingStrategy;
     }
 
     public async Task Execute(IJobExecutionContext context)
@@ -90,7 +93,7 @@ public class EmailReadJob : IJob
 
                         if (handler != null)
                         {
-                            logMessage = await handler.HandleAsync(subject, message, emailDate, service);
+                            await handler.HandleAsync(subject, message, emailDate, service, _loggingStrategy);
                             if (!string.IsNullOrEmpty(logMessage))
                                 _logger.LogInformation(logMessage);
                         }
@@ -155,13 +158,19 @@ public class EmailReadJob : IJob
         return (sentDate, accountBalance);
     }
 
-    public async Task<string> ParseAccountBalanceAlert(string subject, Message message, string emailDate)
+    public async Task<LogAccountBalance> ParseAccountBalanceAlert(string subject, Message message, string emailDate)
     {
         string emailBody = GetEmailBody(message);
 
         var (sentDate, accountBalance) = await ParseAccountBalancesAsync(emailBody);
 
-        return $"Account balance as of {sentDate:yyyy-MM-dd HH:mm:ss} is: {accountBalance:C}";
+        LogAccountBalance logAccountBalance = new LogAccountBalance()
+        {
+            SnapshotDateUTC = sentDate,
+            Balance = accountBalance
+        };
+
+        return logAccountBalance;
 
     }
     private void SaveEmailToFile(Message message, string directory)
@@ -237,49 +246,49 @@ public class EmailReadJob : IJob
         service.Users.Messages.Modify(modifyRequest, "me", messageId).Execute();
     }
 
-    public string ParseLoseItSummary(string subject, Message message, string emailDate)
+    public async Task<LogScaleWeight> ParseLoseItSummary(string subject, Message message, string emailDate)
     {
-        string returnWeight = "Not Available";
         if (!subject.Contains("Lose It!", StringComparison.OrdinalIgnoreCase))
-            return string.Empty;
+            return new LogScaleWeight();
 
         string body = GetEmailBody(message);
         if (string.IsNullOrEmpty(body))
-            return "No body content found.";
+            return new LogScaleWeight();
 
-        HtmlDocument doc = new HtmlDocument();
-        doc.LoadHtml(body);
+        string returnWeight = "0.0";
+        try
+        {
+            HtmlDocument doc = new HtmlDocument();
+            doc.LoadHtml(body);
 
-        var weightNode = doc.DocumentNode.SelectSingleNode("//td[contains(text(), \"Today's Weight\")]/following-sibling::td");
-        if (weightNode != null)
-            returnWeight = weightNode.InnerText.Trim();
+            var weightNode = doc.DocumentNode.SelectSingleNode("//td[contains(text(), \"Today's Weight\")]/following-sibling::td");
+            if (weightNode != null)
+                returnWeight = await ExtractNumericValue(weightNode.InnerText.Trim());
 
-        return $"Weight as of {emailDate} is: {returnWeight}";
+            if (!decimal.TryParse(returnWeight, out decimal weight))
+                throw new FormatException("Failed to parse weight.");
+
+            if (!DateTime.TryParseExact(emailDate, "yyyyMMddHHmmss", CultureInfo.InvariantCulture, DateTimeStyles.None, out DateTime snapshotDate))
+                throw new FormatException("Failed to parse email date.");
+
+            return new LogScaleWeight
+            {
+                SnapshotDateUTC = snapshotDate,
+                Weight = weight
+            };
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error parsing Lose It! summary email.");
+            return new LogScaleWeight();
+        }
     }
-    public void LogForDashboard(string text, string subject, string logLocation, string attachmentSaveLocation, string subDirectory, Message message, GmailService service)
+    public void SaveAttachment(string attachmentSaveLocation, Message message, GmailService service)
     {
-        if (string.IsNullOrWhiteSpace(text) || string.IsNullOrWhiteSpace(subject) || string.IsNullOrWhiteSpace(logLocation) || string.IsNullOrWhiteSpace(attachmentSaveLocation))
-            throw new ArgumentException("Text, subject, log location, and attachment save location must be provided.");
-
-        string subDirectoryPath = Path.Combine(logLocation, subDirectory);
-
-        if (!Directory.Exists(subDirectoryPath))
-            Directory.CreateDirectory(subDirectoryPath);
 
         if (!Directory.Exists(attachmentSaveLocation))
             Directory.CreateDirectory(attachmentSaveLocation);
 
-        string date = DateTime.Now.ToString("yyyyMMddHHmmss");  // Uses 24-hour format
-        string sanitizedSubject = string.Join("_", subject.Split(Path.GetInvalidFileNameChars()));  // Sanitize subject to be a valid file name
-        string logFileName = $"{date}-{sanitizedSubject}.txt";
-        string logFilePath = Path.Combine(subDirectoryPath, logFileName);
-
-        using (StreamWriter writer = new StreamWriter(logFilePath, false))  // Overwrite if exists
-        {
-            writer.WriteLine($"{DateTime.Now}: {text}");
-        }
-
-        // Save attachments
         if (message.Payload.Parts != null && message.Payload.Parts.Count > 0)
         {
             foreach (var part in message.Payload.Parts)
@@ -338,6 +347,11 @@ public class EmailReadJob : IJob
             }
         }
     }
-
-
+    private async Task<string> ExtractNumericValue(string input)
+    {
+        // TODO add actual async operators
+        await Task.Delay(1);
+        var match = Regex.Match(input, @"[\d.]+");
+        return match.Success ? match.Value : "0.0";
+    }
 }

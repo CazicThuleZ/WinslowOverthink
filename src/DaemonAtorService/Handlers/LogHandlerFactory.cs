@@ -15,6 +15,7 @@ public class LogHandlerFactory
         {
             LogFileFormat.LoseItDailySummary => _serviceProvider.GetRequiredService<LoseItDailySummaryHandler>(),
             LogFileFormat.BalanceAlerts => _serviceProvider.GetRequiredService<BankAccountBalanceHandler>(),
+            LogFileFormat.CryptoPrice => _serviceProvider.GetRequiredService<CryptoPriceHandler>(),
             LogFileFormat.DietScale => _serviceProvider.GetRequiredService<DietScaleHandler>(),
             LogFileFormat.ActivityDuration => _serviceProvider.GetRequiredService<ActivityDurationHandler>(),
             LogFileFormat.ActivityCounter => _serviceProvider.GetRequiredService<ActivityCountHandler>(),

@@ -3,6 +3,7 @@
 public enum LogFileFormat
 {
     Other,
+    CryptoPrice,
     DietScale,
     LoseItDailySummary,
     BalanceAlerts,

@@ -13,14 +13,6 @@ namespace DaemonAtorService
     {
         public static void Main(string[] args)
         {
-            var configuration = new ConfigurationBuilder()
-                .AddJsonFile("appsettings.json")
-                 .Build();
-
-            Log.Logger = new LoggerConfiguration()
-                .ReadFrom.Configuration(configuration)
-                .CreateLogger();
-
             try
             {
                 Log.Information("Starting up the service");
@@ -68,11 +60,15 @@ namespace DaemonAtorService
                     services.AddHttpClient();
                     services.AddSingleton<LogHandlerFactory>();
 
+                    services.AddSingleton<ILoggingStrategy>(sp =>
+                      new JsonFileLoggingStrategy(context.Configuration.GetSection("GlobalSettings:DashboardLogLocation").Value));
+
                     services.AddTransient<BankAccountBalanceHandler>();
                     services.AddTransient<LoseItDailySummaryHandler>();
                     services.AddTransient<ActivityCountHandler>();
                     services.AddTransient<ActivityDurationHandler>();
                     services.AddTransient<DietScaleHandler>();
+                    services.AddTransient<CryptoPriceHandler>();
                     services.AddTransient<OtherLogHandler>();
 
                     services.AddTransient<PokeTheOracle>();

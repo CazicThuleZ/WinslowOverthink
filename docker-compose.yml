@@ -23,6 +23,17 @@ services:
     ports:
       - 5672:5672
       - 15672:15672
+  nocodb: 
+    depends_on: 
+      - postgres
+    environment: 
+      NC_DB: "pg://postgres:5432?u=postgres&p=postgrespw&d=nocodb"
+    image: "nocodb/nocodb:latest"
+    ports: 
+      - "8080:8080"
+    restart: always
+    volumes: 
+      - nc_data:/usr/app/data
   media-svc:
     image: quepugmer/media-svc:latest
     build: 
@@ -100,4 +111,5 @@ services:
       - "5266:80"      
 volumes:
   pgdata:
+  nc_data:
   mongodata:

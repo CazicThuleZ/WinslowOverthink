@@ -1,4 +1,5 @@
 ﻿using Azure.AI.OpenAI;
+using Microsoft.Extensions.Options;
 using Microsoft.SemanticKernel;
 
 namespace DaemonAtorService;
@@ -7,14 +8,18 @@ public class PokeTheOracle
 {
     private readonly ILogger<PokeTheOracle> _logger;
     private readonly Kernel _kernel;
-
+    private readonly ILoggingStrategy _loggingStrategy;
     private readonly KernelPlugin _emailPluginsFunction;
     private readonly KernelPlugin _journalPluginsFunction;
 
-    public PokeTheOracle(ILogger<PokeTheOracle> logger, Kernel kernel)
+    private readonly string _kernel_model;
+
+    public PokeTheOracle(ILogger<PokeTheOracle> logger, Kernel kernel, ILoggingStrategy loggingStrategy, IOptions<GlobalSettings> globalSettings)
     {
         _logger = logger;
         _kernel = kernel;
+        _loggingStrategy = loggingStrategy;        
+        _kernel_model = globalSettings.Value.OpenApiModel;
 
         var loadedPlugins = _kernel.Plugins.ToList();
         if (loadedPlugins.Any(plugin => plugin.Name.Equals("PolishJournal", StringComparison.OrdinalIgnoreCase)))
@@ -22,9 +27,6 @@ public class PokeTheOracle
         if (loadedPlugins.Any(plugin => plugin.Name.Equals("InterpretEmails", StringComparison.OrdinalIgnoreCase)))
             _emailPluginsFunction = _kernel.Plugins.FirstOrDefault(plugin => plugin.Name.Equals("InterpretEmails", StringComparison.OrdinalIgnoreCase));
     }
-
-    private int _totalOutputTokens;
-    private int _totalPromptTokens;
     public async Task<string> InvokeKernelFunctionAsync(string pluginType, string functionName, Dictionary<string, string> arguments)
     {
         KernelPlugin selectedPlugin;
@@ -63,9 +65,17 @@ public class PokeTheOracle
         if (metadata.ContainsKey("Usage"))
         {
             var usage = (CompletionsUsage)metadata["Usage"];
-            _totalOutputTokens += usage.CompletionTokens;
-            _totalPromptTokens += usage.PromptTokens;
-            _logger.LogInformation($"Token usage. Input tokens: {usage.PromptTokens}; Output tokens: {usage.CompletionTokens}");
+
+            LogTokenUsage logTokenUsage = new()
+            {
+                SnapshotDateUTC = DateTime.UtcNow,
+                Model = _kernel_model,
+                PromptTokens = usage.PromptTokens,
+                CompletionTokens = usage.CompletionTokens,
+                TotalTokens = usage.TotalTokens
+            };
+
+            _loggingStrategy.Log(logTokenUsage);
         }
     }
 }

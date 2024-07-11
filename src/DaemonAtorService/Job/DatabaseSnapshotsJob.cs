@@ -98,29 +98,23 @@ public class DatabaseSnapshotsJob : IJob
             if (firstLine.Contains("Calories", StringComparison.OrdinalIgnoreCase) &&
                 firstLine.Contains("Fat", StringComparison.OrdinalIgnoreCase) &&
                 firstLine.Contains("Protein", StringComparison.OrdinalIgnoreCase))
-            {
-                return LogFileFormat.LoseItDailySummary;
-            }
-            else if (firstLine.Contains("Weight as of", StringComparison.OrdinalIgnoreCase))
-            {
+                    return LogFileFormat.LoseItDailySummary;
+
+            else if (firstLine.Contains("Weight", StringComparison.OrdinalIgnoreCase))
                 return LogFileFormat.DietScale;
-            }
+            else if (firstLine.Contains("Symbol", StringComparison.OrdinalIgnoreCase))
+                return LogFileFormat.CryptoPrice;                
             else if (firstLine.Contains("Account balance as of", StringComparison.OrdinalIgnoreCase))
-            {
                 return LogFileFormat.BalanceAlerts;
-            }
+            else if (firstLine.Contains("AccountName", StringComparison.OrdinalIgnoreCase))
+                return LogFileFormat.BalanceAlerts;                
             else if (firstLine.Contains("Session", StringComparison.OrdinalIgnoreCase))
-            {
                 return LogFileFormat.ActivityDuration;
-            }
             else if (firstLine.Contains("Count", StringComparison.OrdinalIgnoreCase))
-            {
                 return LogFileFormat.ActivityCounter;
-            }
             else
-            {
                 return LogFileFormat.Other;
-            }
+
         }
     }
     private void PurgeArchives()

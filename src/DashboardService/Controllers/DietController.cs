@@ -18,7 +18,7 @@ public class DietController : ControllerBase
     {
         _context = context;
         _mapper = mapper;
-    }    
+    }
 
     [HttpGet("get-diet-diary")]
     public async Task<ActionResult<List<DietStatDto>>> GetDietDiary(DateTime beginDate, DateTime endDate)
@@ -58,17 +58,17 @@ public class DietController : ControllerBase
     }
 
     [HttpPut("update-weight")]
-    public async Task<ActionResult> UpdateWeight(DateTime date, decimal weight)
+    public async Task<ActionResult> UpdateWeight([FromBody] WeightUpdateDto weightUpdateDto)
     {
-        var snapshotDateUtc = DateTime.SpecifyKind(date, DateTimeKind.Utc);
+        var snapshotDateUtc = DateTime.SpecifyKind(weightUpdateDto.Date, DateTimeKind.Utc);
 
         var existingDietRecord = await _context.DietStats
-            .FirstOrDefaultAsync(diet => diet.SnapshotDateUTC == snapshotDateUtc);
+             .FirstOrDefaultAsync(diet => diet.SnapshotDateUTC == snapshotDateUtc);
 
         if (existingDietRecord == null)
             return NotFound("DietStat for the given date not found.");
 
-        existingDietRecord.Weight = weight;
+        existingDietRecord.Weight = weightUpdateDto.Weight;
         _context.DietStats.Update(existingDietRecord);
 
         var result = await _context.SaveChangesAsync() > 0;
@@ -88,7 +88,7 @@ public class DietController : ControllerBase
         var foodPrice = await _context.FoodPrices
             .FirstOrDefaultAsync(fp =>
                 fp.Name.ToLower() == name.ToLower() &&
-                fp.UnitOfMeasure.ToLower() == unitOfMeasure.ToLower());                
+                fp.UnitOfMeasure.ToLower() == unitOfMeasure.ToLower());
 
         if (foodPrice == null)
             return NotFound("Food price not found.");

@@ -1,10 +1,12 @@
 ﻿using Quartz;
 using RestSharp;
 using System;
+using System.Collections.Generic;
+using System.IO;
+using System.Linq;
+using System.Text.Json;
 using System.Threading.Tasks;
 using Microsoft.Extensions.Logging;
-using System.Text.Json;
-using DaemonAtorService;
 using Microsoft.Extensions.Options;
 
 namespace DaemonAtorService;
@@ -16,11 +18,11 @@ public class CryptoPriceJob : IJob
     private readonly RestClient _client;
     private readonly string _filePath;
     private readonly string _held_Currencies;
-
-
-    public CryptoPriceJob(ILogger<CryptoPriceJob> logger, IOptions<CryptoSettings> settings)
+    private readonly ILoggingStrategy _loggingStrategy;
+    public CryptoPriceJob(ILogger<CryptoPriceJob> logger, IOptions<CryptoSettings> settings, ILoggingStrategy loggingStrategy)
     {
         _logger = logger;
+        _loggingStrategy = loggingStrategy;
         var cryptoSettings = settings.Value;
         _client = new RestClient(cryptoSettings.ApiBaseUrl);
         _filePath = cryptoSettings.FilePath;
@@ -47,7 +49,7 @@ public class CryptoPriceJob : IJob
                 }
             };
             var cryptoStats = JsonSerializer.Deserialize<List<CryptoStat>>(response.Content, options);
-            SaveCryptoPrices(cryptoStats);
+            await SaveCryptoPrices(cryptoStats);
         }
         else
         {
@@ -57,8 +59,10 @@ public class CryptoPriceJob : IJob
         _logger.LogInformation("CryptoPriceJob completed at {time}", DateTimeOffset.Now);
     }
 
-    private void SaveCryptoPrices(List<CryptoStat> cryptoStats)
+    private async Task SaveCryptoPrices(List<CryptoStat> cryptoStats)
     {
+        var today = DateTime.UtcNow.Date;
+
         // Load the existing history
         List<CryptoHistory> history = LoadCryptoHistory();
 
@@ -72,9 +76,6 @@ public class CryptoPriceJob : IJob
                 cryptoHistory = new CryptoHistory { Id = stat.Id, Symbol = stat.Symbol };
                 history.Add(cryptoHistory);
             }
-
-            // Get the current date
-            var today = DateTime.UtcNow.Date;
 
             // Find or create the daily stat for today
             var dailyStat = cryptoHistory.DailyStats.FirstOrDefault(ds => ds.Date == today);
@@ -91,14 +92,37 @@ public class CryptoPriceJob : IJob
                     dailyStat.HighestPrice = stat.Current_Price;
                 }
             }
-
-            // Remove records older than 14 days
-            cryptoHistory.DailyStats = cryptoHistory.DailyStats
-                .Where(ds => ds.Date >= today.AddDays(-14))
-                .ToList();
+            // // Remove records older than 14 days
+            // cryptoHistory.DailyStats = cryptoHistory.DailyStats
+            //     .Where(ds => ds.Date >= today.AddDays(-14))
+            //     .ToList();
         }
 
-        // Save the updated history back to the file
+        // Save peak values for dates not equal to today and remove them from the history
+        foreach (var cryptoHistory in history)
+        {
+            var pastDailyStats = cryptoHistory.DailyStats
+                .Where(ds => ds.Date != today)
+                .ToList();
+
+            foreach (var pastDailyStat in pastDailyStats)
+            {
+
+                LogCrypto logCrypto = new()
+                {
+                    Id = cryptoHistory.Id,
+                    Symbol = cryptoHistory.Symbol,
+                    PriceDateUTC = pastDailyStat.Date,
+                    HighestPrice = pastDailyStat.HighestPrice
+                };
+
+                _loggingStrategy.Log(logCrypto);
+                cryptoHistory.DailyStats.Remove(pastDailyStat);
+                await Task.Delay(2000);  // just to ensure unique filenames.
+            }
+        }
+
+        // Save the cleaned-up history back to the file
         SaveCryptoHistory(history);
     }
 

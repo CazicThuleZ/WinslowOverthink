@@ -5,5 +5,5 @@ namespace DaemonAtorService;
 
 public interface IEmailHandler
 {
-    Task<string> HandleAsync(string subject, Message message, string emailDate, GmailService service);
+    public Task HandleAsync(string subject, Message message, string emailDate, GmailService service, ILoggingStrategy loggingStrategy);
 }

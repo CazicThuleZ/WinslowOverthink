@@ -12,13 +12,10 @@ public class LookoutCUHandler : IEmailHandler
         _job = job;
     }
 
-    public async Task<string> HandleAsync(string subject, Message message, string emailDate, GmailService service)
+    public async Task HandleAsync(string subject, Message message, string emailDate, GmailService service, ILoggingStrategy loggingStrategy)
     {
-        var logMessage = await _job.ParseAccountBalanceAlert(subject, message, emailDate);
-        if (!string.IsNullOrEmpty(logMessage))
-        {
-            _job.LogForDashboard("Checking Account " + logMessage, subject, _job._dashboardLogLocation, _job._attachmentSaveLocation, "CUChecking", message, service);
-        }
-        return logMessage;
+        var accountBalance = await _job.ParseAccountBalanceAlert(subject, message, emailDate);
+        accountBalance.AccountName = "Lookout Credit Union";
+        loggingStrategy.Log(accountBalance);
     }
 }
