@@ -43,6 +43,8 @@
     </None>
   </ItemGroup>      
   <ItemGroup>
+    <None Remove="SKPlugins\InterpretLogs\ParseVoiceMemo\config.json" />
+    <None Remove="SKPlugins\InterpretLogs\ParseVoiceMemo\skprompt.txt" />
     <None Remove="SKPlugins\PolishJournal\CatagorizeContent\config.json" />
     <None Remove="SKPlugins\PolishJournal\CatagorizeContent\skprompt.txt" />
     <None Remove="SKPlugins\PolishJournal\ProofreadGrammer\config.json" />

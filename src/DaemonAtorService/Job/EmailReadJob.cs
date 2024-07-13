@@ -136,7 +136,6 @@ public class EmailReadJob : IJob
         for (int i = 0; i < 5; i++)
         {
             var response = await _pokeTheOracle.InvokeKernelFunctionAsync("email", "DeriveBalance", new Dictionary<string, string> { { "emailBody", emailBody } });
-            //var response = await _kernel.InvokeAsync(_emailPluginsFunction["DeriveBalance"], arguments);
 
             var sentDatePattern = @"Sent date:\s*(?<date>.*)";
             var balancePattern = @"Account balance:\s*\$(?<balance>[0-9,]+(\.\d{2})?)";

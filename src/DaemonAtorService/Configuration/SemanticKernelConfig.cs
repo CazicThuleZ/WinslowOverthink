@@ -16,6 +16,8 @@ public static class SemanticKernelConfig
         builder.Plugins.AddFromType<ConversationSummaryPlugin>();
         builder.Plugins.AddFromPromptDirectory(Path.Combine(semanticKernelPluginLocation, "PolishJournal"));        
         builder.Plugins.AddFromPromptDirectory(Path.Combine(semanticKernelPluginLocation, "InterpretEmails"));
+        builder.Plugins.AddFromPromptDirectory(Path.Combine(semanticKernelPluginLocation, "InterpretLogs"));
+        
         builder.Services.AddOpenAIChatCompletion(openAiApiModel, openAiApiKey);
 
         var kernel = builder.Build();

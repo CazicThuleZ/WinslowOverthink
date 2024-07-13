@@ -19,6 +19,7 @@ public class LogHandlerFactory
             LogFileFormat.DietScale => _serviceProvider.GetRequiredService<DietScaleHandler>(),
             LogFileFormat.ActivityDuration => _serviceProvider.GetRequiredService<ActivityDurationHandler>(),
             LogFileFormat.ActivityCounter => _serviceProvider.GetRequiredService<ActivityCountHandler>(),
+            LogFileFormat.TokenUsage => _serviceProvider.GetRequiredService<TokenUsageHandler>(),
             LogFileFormat.Other => _serviceProvider.GetRequiredService<OtherLogHandler>(),
             _ => throw new NotImplementedException($"No processor available for format: {format}")
         };

@@ -13,6 +13,12 @@ namespace DaemonAtorService
     {
         public static void Main(string[] args)
         {
+            Log.Logger = new LoggerConfiguration()
+                .ReadFrom.Configuration(new ConfigurationBuilder()
+                    .AddJsonFile("appsettings.json")
+                    .Build())
+                .CreateLogger();
+                
             try
             {
                 Log.Information("Starting up the service");
@@ -69,6 +75,7 @@ namespace DaemonAtorService
                     services.AddTransient<ActivityDurationHandler>();
                     services.AddTransient<DietScaleHandler>();
                     services.AddTransient<CryptoPriceHandler>();
+                    services.AddTransient<TokenUsageHandler>();                    
                     services.AddTransient<OtherLogHandler>();
 
                     services.AddTransient<PokeTheOracle>();

@@ -152,10 +152,8 @@ public class JournalIntakeJob : IJob
         PolishedUpchuck polishedUpchuck = new PolishedUpchuck();
 
         // Apply hashtags
-        //var categorizeResponse = await InvokeKernelFunctionAsync("CatagorizeContent", textChunk);
         var categorizeResponse = await _pokeTheOracle.InvokeKernelFunctionAsync("journal", "CatagorizeContent", new Dictionary<string, string> { { "journalEntry", textChunk } });
         // proofread
-        //var proofreadResponse = await InvokeKernelFunctionAsync("ProofreadGrammer", textChunk);
         var proofreadResponse = await _pokeTheOracle.InvokeKernelFunctionAsync("journal", "ProofreadGrammer", new Dictionary<string, string> { { "journalEntry", textChunk } });
 
         polishedUpchuck.Hashtags = ParseHashtags(categorizeResponse);

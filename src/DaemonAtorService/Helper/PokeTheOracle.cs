@@ -10,6 +10,7 @@ public class PokeTheOracle
     private readonly Kernel _kernel;
     private readonly ILoggingStrategy _loggingStrategy;
     private readonly KernelPlugin _emailPluginsFunction;
+    private readonly KernelPlugin _logPluginsFunction;
     private readonly KernelPlugin _journalPluginsFunction;
 
     private readonly string _kernel_model;
@@ -18,7 +19,7 @@ public class PokeTheOracle
     {
         _logger = logger;
         _kernel = kernel;
-        _loggingStrategy = loggingStrategy;        
+        _loggingStrategy = loggingStrategy;
         _kernel_model = globalSettings.Value.OpenApiModel;
 
         var loadedPlugins = _kernel.Plugins.ToList();
@@ -26,6 +27,8 @@ public class PokeTheOracle
             _journalPluginsFunction = _kernel.Plugins.FirstOrDefault(plugin => plugin.Name.Equals("PolishJournal", StringComparison.OrdinalIgnoreCase));
         if (loadedPlugins.Any(plugin => plugin.Name.Equals("InterpretEmails", StringComparison.OrdinalIgnoreCase)))
             _emailPluginsFunction = _kernel.Plugins.FirstOrDefault(plugin => plugin.Name.Equals("InterpretEmails", StringComparison.OrdinalIgnoreCase));
+        if (loadedPlugins.Any(plugin => plugin.Name.Equals("InterpretLogs", StringComparison.OrdinalIgnoreCase)))
+            _logPluginsFunction = _kernel.Plugins.FirstOrDefault(plugin => plugin.Name.Equals("InterpretLogs", StringComparison.OrdinalIgnoreCase));
     }
     public async Task<string> InvokeKernelFunctionAsync(string pluginType, string functionName, Dictionary<string, string> arguments)
     {
@@ -35,6 +38,9 @@ public class PokeTheOracle
             case "email":
                 selectedPlugin = _emailPluginsFunction;
                 break;
+            case "log":
+                selectedPlugin = _logPluginsFunction;
+                break;                
             case "journal":
                 selectedPlugin = _journalPluginsFunction;
                 break;

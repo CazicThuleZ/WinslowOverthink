@@ -58,10 +58,15 @@ public class ActivityController : ControllerBase
     {
         var snapshotDateUtc = DateTime.SpecifyKind(activityCountDto.Date, DateTimeKind.Utc).ToUniversalTime();
 
-        var existingActivity = await _context.ActivityCount
-            .FirstOrDefaultAsync(ad =>
-                ad.SnapshotDateUTC == snapshotDateUtc &&
-                ad.Name.Equals(activityCountDto.Name, StringComparison.OrdinalIgnoreCase));
+        // var existingActivity = await _context.ActivityCount
+        //     .FirstOrDefaultAsync(ad =>
+        //         ad.SnapshotDateUTC == snapshotDateUtc &&
+        //         ad.Name.Equals(activityCountDto.Name, StringComparison.OrdinalIgnoreCase));
+
+        var existingActivity = _context.ActivityCount
+            .Where(ad => ad.SnapshotDateUTC.Date == snapshotDateUtc.Date)
+            .AsEnumerable() // Switch to client-side evaluation
+            .FirstOrDefault(ad => ad.Name.Equals(activityCountDto.Name, StringComparison.OrdinalIgnoreCase));
 
         if (existingActivity != null)
         {
@@ -85,5 +90,35 @@ public class ActivityController : ControllerBase
             return BadRequest("Could not save activity entry.");
 
         return Ok("Activity entry updated successfully.");
-    }    
+    }
+
+    [HttpPost("add-voice-memo")]
+    public async Task<ActionResult> AddVoiceMemo([FromBody] VoiceLogDto voiceLogDto)
+    {
+        var snapshotDateUtc = DateTime.SpecifyKind(voiceLogDto.SnapshotDateUTC, DateTimeKind.Utc).ToUniversalTime();
+
+        try
+        {
+            var newMemo = new VoiceLog
+            {
+                Id = Guid.NewGuid(),
+                SnapshotDateUTC = snapshotDateUtc,
+                ActivityName = voiceLogDto.ActivityName,
+                Quantity = voiceLogDto.Quantity,
+                UnitOfMeasure = voiceLogDto.UnitOfMeasure
+            };
+
+            _context.VoiceLogs.Add(newMemo);
+
+            var result = await _context.SaveChangesAsync() > 0;
+            if (!result)
+                return BadRequest("Could not save activity entry.");
+        }
+        catch (Exception ex)
+        {
+            return BadRequest(ex.Message);
+        }
+
+        return Ok("Voice Log created successfully.");
+    }
 }

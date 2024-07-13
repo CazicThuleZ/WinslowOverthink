@@ -4,6 +4,7 @@ public enum LogFileFormat
 {
     Other,
     CryptoPrice,
+    TokenUsage,
     DietScale,
     LoseItDailySummary,
     BalanceAlerts,

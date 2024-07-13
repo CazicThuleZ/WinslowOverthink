@@ -1,0 +1,10 @@
+Extract the following from {{$logContent}}:
+1. What word or words would best describes the activity name?  Limit the answer to 1 word or 2 concatenated words.  For example:
+   jogging, gambling, cardPlaying, bungeeJumping (use camel case if two words).  [name]
+2. What is the quantity of that activity?  For example "1", "2", "6000", "96.5". [quantity]
+3. What is the unit of measure for that activity? For example "minutes", "hours", "repetitions", "miles", "lbs", "calories". [unitOfMeasure] 
+4. What is the date of this activity expressed in yyyy-MM-dd format? [date]
+            
+Return items 1 through 4 in legitimate, well formed JSON using the following format:
+ {"MemoDate":[date],"Quantity":[quantity],"Uom":[unitOfMeasure],"Name": [name]}            
+Do not include escape characters or CRLF characters in the response.
