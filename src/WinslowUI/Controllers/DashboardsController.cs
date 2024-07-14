@@ -5,10 +5,12 @@ namespace WinslowUI;
 public class DashboardsController : Controller
 {
     private readonly ILogger<DashboardsController> _logger;
+    private readonly IDietStatRepository _dietStatRepository;
 
-    public DashboardsController(ILogger<DashboardsController> logger)
+    public DashboardsController(ILogger<DashboardsController> logger, IDietStatRepository dietStatRepository)
     {
         _logger = logger;
+        _dietStatRepository = dietStatRepository;
     }
 
     public IActionResult Finance()
@@ -16,9 +18,15 @@ public class DashboardsController : Controller
         return View();
     }
 
-    public IActionResult Health()
+    public async Task<IActionResult> Health()
     {
-        return View();
+            var endDate = DateTime.UtcNow;
+            var beginDate = endDate.AddDays(-30);
+
+            var dietStats = await _dietStatRepository.GetDietStatsAsync(beginDate, endDate);
+
+            return View(dietStats);        
+
     }
 
     public IActionResult Home()

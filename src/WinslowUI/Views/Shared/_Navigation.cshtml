@@ -21,10 +21,10 @@
                 </div>
             </li>
             <li class="@Html.IsSelected(controller: "Dashboards")">
-                <a href="@Url.Action("Finance", "Dashboards")"><i class="fa fa-th-large"></i> <span class="nav-label" data-i18n="nav.dashboard">Dashboards</span> <span class="fa arrow"></span></a>
+                <a href="@Url.Action("Health", "Dashboards")"><i class="fa fa-th-large"></i> <span class="nav-label" data-i18n="nav.dashboard">Dashboards</span> <span class="fa arrow"></span></a>
                 <ul class="nav nav-second-level collapse @Html.IsSelected(controller: "Dashboards", cssClass: "in")">
+                    <li class="@Html.IsSelected(action: "Health")"><a href="@Url.Action("Health", "Dashboards")">Health</a></li>                    
                     <li class="@Html.IsSelected(action: "Finance")"><a href="@Url.Action("Finance", "Dashboards")">Finance</a></li>
-                    <li class="@Html.IsSelected(action: "Health")"><a href="@Url.Action("Health", "Dashboards")">Health</a></li>
                     <li class="@Html.IsSelected(action: "Home")"><a href="@Url.Action("Home", "Dashboards")">Home</a></li>
                     <li class="@Html.IsSelected(action: "World")"><a href="@Url.Action("World", "Dashboards")">World</a></li>
                     <li class="@Html.IsSelected(action: "Media")"><a href="@Url.Action("Media", "Dashboards")">Media</a></li>

@@ -850,6 +850,10 @@ h5 {
   margin-top: 5px;
   font-weight: 600;
 }
+.left-justify {
+  display: flex;
+  justify-content: flex-start;
+}
 .nav > li > a {
   color: #a7b1c2;
   font-weight: 600;
