@@ -45,6 +45,7 @@ public class JournalIntakeJob : IJob
 
         _invalidChars = new string(Path.GetInvalidFileNameChars()) + new string(Path.GetInvalidPathChars());
     }
+
     public async Task Execute(IJobExecutionContext context)
     {
         _logger.LogInformation("Journal Intake Job started at: {time}", DateTimeOffset.Now);
@@ -62,8 +63,19 @@ public class JournalIntakeJob : IJob
             foreach (var inputFile in inputFiles)
             {
                 string fileName = Path.GetFileName(inputFile);
+                var lastModified = File.GetLastWriteTime(inputFile);
+                string yearMonthFolder = lastModified.ToString("yyyyMM");
+                string polishedSubFolderPath = Path.Combine(_inputFilePath, "upchuck", "polished", yearMonthFolder);
+                string unPolishedSubFolderPath = Path.Combine(_inputFilePath, "upchuck", "raw", yearMonthFolder);
+
+                if (!Directory.Exists(polishedSubFolderPath))
+                    Directory.CreateDirectory(polishedSubFolderPath);
+
+                if (!Directory.Exists(unPolishedSubFolderPath))
+                    Directory.CreateDirectory(unPolishedSubFolderPath);                    
+
                 if (File.Exists(_inputFilePath + @"/" + fileName) &&
-                    !File.Exists(_inputFilePath + @"/upchuck" + fileName))  // This is to prevent processing of files of duplicates.
+                    !File.Exists(unPolishedSubFolderPath + @"/" + fileName))  // Prevent processing of duplicates.
                 {
                     string markdownContent = File.ReadAllText(inputFile);
                     string dateSlug = string.Empty;
@@ -72,7 +84,6 @@ public class JournalIntakeJob : IJob
                     foreach (string section in sections)
                     {
                         string outputFileName = string.Empty;
-
                         string sectionContent = section.Trim();
 
                         string[] lines = sectionContent.Split('\n');
@@ -104,7 +115,7 @@ public class JournalIntakeJob : IJob
                             var polishedUpchuck = await PolishUpchuck(textContent);
                             polishedUpchuck.CaptureDateSlug = dateSlug;
                             polishedUpchuck.GeneratedFromFileName = "upchuck" + fileName;
-                            SavePolishedUpchuckToFile(polishedUpchuck, "polishedUpchuck" + outputFileName);
+                            SavePolishedUpchuckToFile(polishedUpchuck, Path.Combine(polishedSubFolderPath, "polishedUpchuck" + outputFileName));
                             dateSlug = string.Empty;
                         }
 
@@ -113,7 +124,7 @@ public class JournalIntakeJob : IJob
 
                     // Rename so it doesn't get processed again in future runs.
                     string newFileName = "upchuck" + fileName;
-                    string newFilePath = Path.Combine(Path.GetDirectoryName(inputFile), newFileName);
+                    string newFilePath = Path.Combine(unPolishedSubFolderPath, newFileName);
                     try
                     {
                         File.Move(inputFile, newFilePath);
@@ -133,6 +144,7 @@ public class JournalIntakeJob : IJob
 
         _logger.LogInformation("Journal Intake Job completed at: {time}", DateTimeOffset.Now);
     }
+
 
     private List<T> LoadJsonList<T>(string filePath)
     {
