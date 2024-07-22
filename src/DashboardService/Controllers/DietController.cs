@@ -161,4 +161,33 @@ public class DietController : ControllerBase
 
         return Ok(foodPrice.Price);
     }
+
+    [HttpPost("create-meal-log-entry")]
+    public async Task<ActionResult> CreateMealLogEntry([FromBody] MealLogDto mealLogDto)
+    {
+        var snapshotDateUtc = DateTime.SpecifyKind(mealLogDto.SnapshotDateUTC, DateTimeKind.Utc).ToUniversalTime();
+        mealLogDto.SnapshotDateUTC = snapshotDateUtc;
+
+        var mealLog = _mapper.Map<MealLog>(mealLogDto);
+        _context.MealLogs.Add(mealLog);
+
+        var result = await _context.SaveChangesAsync() > 0;
+        if (!result)
+            return BadRequest("Could not save meal log entry.");
+
+        return CreatedAtAction(nameof(GetMealLog), new { date = mealLog.SnapshotDateUTC }, mealLogDto);
+    }
+
+    [HttpGet("get-meal-logs")]
+    public async Task<ActionResult<List<MealLogDto>>> GetMealLog(DateTime date)
+    {
+        var mealDateUtc = DateTime.SpecifyKind(date, DateTimeKind.Utc);
+
+        var query = _context.MealLogs
+            .Where(meal => meal.SnapshotDateUTC == mealDateUtc);
+
+        var mealLog = await query.ToListAsync();
+        var mealLogDtos = _mapper.Map<List<MealLogDto>>(mealLog);
+        return Ok(mealLogDtos);
+    }
 }

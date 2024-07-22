@@ -98,10 +98,10 @@ namespace DaemonAtorService
                     SnapshotDateUTC = reportDate,
 
                     Calories = dietStatistics
-                        .Where(stat => stat.Calories > 0)
+                        .Where(stat => stat.Type.ToLower() != "exercise")
                         .Sum(stat => stat.Calories),
                     ExerciseCalories = dietStatistics
-                        .Where(stat => stat.Calories < 0)
+                        .Where(stat => stat.Type.ToLower() == "exercise")
                         .Sum(stat => stat.Calories),
                     FatGrams = dietStatistics.Sum(stat => stat.Fat),
                     ProteinGrams = dietStatistics.Sum(stat => stat.Protein),
@@ -144,10 +144,11 @@ namespace DaemonAtorService
             // Try to get the cost, but if even a single value can't be determined, return 0 because knowing
             // some of the cost as opposed to all of it has no value.
             decimal totalCost = 0;
+            bool allCostsDetermined = true;
 
             foreach (var dietStat in dietStatistics)
             {
-                if (dietStat.Calories > 0) // Exclude exercise, for it is free.
+                if (dietStat.Type.ToLower() != "exercise") // Exclude exercise, for it is free.
                 {
                     var response = await _httpClient.GetAsync(
                         _dashboardUrl + $"/diet/calculate-food-price?name={dietStat.Name}&unitOfMeasure={dietStat.Units}&quantity={dietStat.Quantity}");
@@ -158,13 +159,47 @@ namespace DaemonAtorService
                     var foodPrice = await response.Content.ReadFromJsonAsync<decimal>();
 
                     if (foodPrice == 0)
-                        return 0;
+                        allCostsDetermined = false;
 
                     totalCost += foodPrice;
+                    await logMealAsync(dietStat, foodPrice);
                 }
             }
 
-            return totalCost;
+            if (!allCostsDetermined)
+                return 0;
+            else
+                return totalCost;
+        }
+
+        private async Task logMealAsync(DietStatistic dietStat, decimal foodPrice)
+        {
+            var mealLogDto = new MealLogDto
+            {
+                SnapshotDateUTC = dietStat.Date,
+                Name = dietStat.Name,
+                MealType = dietStat.Type,
+                Quantity = dietStat.Quantity,
+                UnitOfMeasure = dietStat.Units,
+                Calories = dietStat.Calories,
+                FatGrams = dietStat.Fat,
+                CarbGrams = dietStat.Carbohydrates,
+                SugarGrams = dietStat.Sugars,
+                ProteinGrams = dietStat.Protein,
+                Cost = foodPrice
+            };
+
+            var jsonOptions = new JsonSerializerOptions { PropertyNamingPolicy = JsonNamingPolicy.CamelCase, WriteIndented = true };
+            var jsonData = JsonSerializer.Serialize(mealLogDto, jsonOptions);
+
+            var content = new StringContent(jsonData, Encoding.UTF8, "application/json");
+
+            var response = await _httpClient.PostAsync(_dashboardUrl + "/diet/create-meal-log-entry", content);
+
+            if (response.IsSuccessStatusCode)
+                _logger.LogInformation("Successfully logged meal data for {MealName} at {Date}", dietStat.Name, dietStat.Date);
+            else
+                _logger.LogError("Failed to log meal data for {MealName} at {Date}. Status Code: {StatusCode}, Response: {ResponseContent}", dietStat.Name, dietStat.Date, response.StatusCode, await response.Content.ReadAsStringAsync());
         }
     }
 }
