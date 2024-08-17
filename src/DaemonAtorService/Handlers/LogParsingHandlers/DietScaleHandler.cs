@@ -116,7 +116,13 @@ public class DietScaleHandler : ILogProcessor
             else
             {
                 success = false;
-                _logger.LogError($"Failed to add daily weight for {logScaleWeight.SnapshotDateUTC})");
+                // This file may be pulled into this logic more than once because the scale weight stat arrives on a different
+                // schedule than the daily summary stat.  Don't consider it a failure unless it looks like success will is not gonna happen.
+                var daysDifference = (DateTime.UtcNow - logScaleWeight.SnapshotDateUTC).TotalDays;
+                if (daysDifference > 3)
+                {
+                    _logger.LogError($"Failed to add daily weight for {logScaleWeight.SnapshotDateUTC})");
+                }                
             }
         }
 

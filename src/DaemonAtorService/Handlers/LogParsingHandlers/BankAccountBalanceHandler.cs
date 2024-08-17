@@ -35,15 +35,13 @@ public class BankAccountBalanceHandler : ILogProcessor
         }
         catch (Exception ex)
         {
-            _logger.LogError($"Error processing Crypto log: {ex.Message}");
+            _logger.LogError($"Error processing Bank Balance: {ex.Message}");
             return false;
         }
     }
 
     private async Task<bool> PostBankBalanceLogAsync(LogAccountBalance bankBalance)
     {
-        bool success = true;
-
         AccountBalanceDto accountBalanceDto = new AccountBalanceDto
         {
             SnapshotDateUTC = bankBalance.SnapshotDateUTC,
@@ -60,17 +58,18 @@ public class BankAccountBalanceHandler : ILogProcessor
 
         if (response.IsSuccessStatusCode)
         {
-            success = true;
-            _logger.LogInformation($"Successfully added bank balance {bankBalance.AccountName}");
+            _logger.LogInformation($"Successfully added bank balance for account '{bankBalance.AccountName}' on {bankBalance.SnapshotDateUTC}.");
+            return true;
         }
         else
         {
-            success = false;
-            _logger.LogError($"Failed to add food price for {bankBalance.AccountName})");
+            var responseContent = await response.Content.ReadAsStringAsync();
+            _logger.LogError($"Failed to add bank balance for account '{bankBalance.AccountName}' on {bankBalance.SnapshotDateUTC}. " +
+                             $"Status Code: {response.StatusCode}, Reason: {response.ReasonPhrase}, Response Content: {responseContent}");
+            return false;
         }
-
-        return success;
     }
+
 
     private async Task<LogAccountBalance> DeserializeBalanceLogOLDAsync(string fileName)
     {
@@ -121,7 +120,7 @@ public class BankAccountBalanceHandler : ILogProcessor
         }
         catch (Exception ex)
         {
-            _logger.LogError($"Error deserializing scale weight log: {ex.Message}");
+            _logger.LogError($"Error deserializing bank balance message: {ex.Message}");
             return null;
         }
     }
