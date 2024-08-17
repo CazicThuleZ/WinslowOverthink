@@ -71,7 +71,7 @@ namespace DaemonAtorService
                     else
                     {
                         success = false;
-                        _logger.LogInformation($"Failed to add food price for {dietStat.Name}");
+                        _logger.LogError($"Failed to add food price for {dietStat.Name}");
                     }
                 }
             }

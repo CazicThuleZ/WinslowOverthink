@@ -116,7 +116,7 @@ public class DietScaleHandler : ILogProcessor
             else
             {
                 success = false;
-                _logger.LogInformation($"Failed to add daily weight for {logScaleWeight.SnapshotDateUTC})");
+                _logger.LogError($"Failed to add daily weight for {logScaleWeight.SnapshotDateUTC})");
             }
         }
 

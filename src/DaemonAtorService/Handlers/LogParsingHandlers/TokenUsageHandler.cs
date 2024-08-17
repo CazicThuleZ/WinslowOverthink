@@ -67,7 +67,7 @@ public class TokenUsageHandler : ILogProcessor
         else
         {
             success = false;
-            _logger.LogInformation($"Failed to add ai usage token count {activityCountDto.Name})");
+            _logger.LogError($"Failed to add ai usage token count {activityCountDto.Name})");
         }
 
         return success;

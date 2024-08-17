@@ -66,7 +66,7 @@ public class BankAccountBalanceHandler : ILogProcessor
         else
         {
             success = false;
-            _logger.LogInformation($"Failed to add food price for {bankBalance.AccountName})");
+            _logger.LogError($"Failed to add food price for {bankBalance.AccountName})");
         }
 
         return success;

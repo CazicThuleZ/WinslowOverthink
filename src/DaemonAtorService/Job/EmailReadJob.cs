@@ -103,7 +103,7 @@ public class EmailReadJob : IJob
                     }
                     catch (Exception ex)
                     {
-                        _logger.LogInformation("Failed to process email: {subject}. {exception}", subject, ex.Message);
+                        _logger.LogError("Failed to process email: {subject}. {exception}", subject, ex.Message);
                     }
                     finally
                     {

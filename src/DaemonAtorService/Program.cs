@@ -18,7 +18,7 @@ namespace DaemonAtorService
                     .AddJsonFile("appsettings.json")
                     .Build())
                 .CreateLogger();
-                
+
             try
             {
                 Log.Information("Starting up the service");
@@ -75,7 +75,7 @@ namespace DaemonAtorService
                     services.AddTransient<ActivityDurationHandler>();
                     services.AddTransient<DietScaleHandler>();
                     services.AddTransient<CryptoPriceHandler>();
-                    services.AddTransient<TokenUsageHandler>();                    
+                    services.AddTransient<TokenUsageHandler>();
                     services.AddTransient<OtherLogHandler>();
 
                     services.AddTransient<PokeTheOracle>();
@@ -91,6 +91,7 @@ namespace DaemonAtorService
                         q.AddJobAndTrigger<EmailReadJob>(jobSchedules.EmailReadJob);
                         q.AddJobAndTrigger<JournalIntakeJob>(jobSchedules.JournalIntakeJob);
                         q.AddJobAndTrigger<DirectorySyncJob>(jobSchedules.DirectorySyncJob);
+                        q.AddJobAndTrigger<NotificationJob>(jobSchedules.NotificationJob);
                         q.AddJobAndTrigger<DatabaseSnapshotsJob>(jobSchedules.DatabaseSnapshotsJob);
                     });
 

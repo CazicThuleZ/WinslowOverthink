@@ -65,7 +65,7 @@ public class CryptoPriceHandler : ILogProcessor
         else
         {
             success = false;
-            _logger.LogInformation($"Failed to add food price for {logCrypto.Symbol})");
+            _logger.LogError($"Failed to add food price for {logCrypto.Symbol})");
         }
 
         return success;

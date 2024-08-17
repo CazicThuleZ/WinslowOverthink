@@ -131,7 +131,7 @@ public class JournalIntakeJob : IJob
                     }
                     catch (Exception ex)
                     {
-                        _logger.LogInformation("Error renaming input file ::: " + newFileName + " ::: " + inputFile + " ::: " + " to output file " + " ::: " + newFilePath + ex.Message);
+                        _logger.LogError("Error renaming input file ::: " + newFileName + " ::: " + inputFile + " ::: " + " to output file " + " ::: " + newFilePath + ex.Message);
                         throw;
                     }
                 }

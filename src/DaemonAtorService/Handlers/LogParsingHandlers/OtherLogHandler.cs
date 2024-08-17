@@ -87,18 +87,18 @@ public class OtherLogHandler : ILogProcessor
             else
             {
                 success = false;
-                _logger.LogInformation($"Failed to add food price for {voiceLogDto.ActivityName})");
+                _logger.LogError($"Failed to add voice log for {voiceLogDto.ActivityName})");
             }
         }
         catch (FormatException ex)
         {
             success = false;
-            _logger.LogInformation($"Formatting exception occured when attempting to map voice memo {ex.Message})");
+            _logger.LogError($"Formatting exception occured when attempting to map voice memo {ex.Message})");
         }
         catch (Exception ex)
         {
             success = false;
-            _logger.LogInformation($"Unexpected error processing voice memo: {ex.Message}");
+            _logger.LogError($"Unexpected error processing voice memo: {ex.Message}");
         }
 
         return success;
@@ -185,6 +185,6 @@ public class OtherLogHandler : ILogProcessor
             return;
 
         File.Move(filePath, newFilePath);
-        _logger.LogError($"Flagged as do not process: {newFileName}");
+        _logger.LogInformation($"Flagged as do not process: {newFileName}");
     }
 }
