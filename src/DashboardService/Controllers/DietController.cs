@@ -2,6 +2,7 @@
 using DashboardService.Data;
 using DashboardService.DTOs;
 using DashboardService.Entities;
+using DashboardService.Services;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 
@@ -11,13 +12,31 @@ namespace DashboardService.Controllers;
 [Route("dashboard/diet")]
 public class DietController : ControllerBase
 {
+    private FoodCosting _foodCosting;
     private readonly DashboardDbContext _context;
     private readonly IMapper _mapper;
 
-    public DietController(DashboardDbContext context, IMapper mapper)
+    public DietController(DashboardDbContext context, IMapper mapper, FoodCosting foodCosting)
     {
         _context = context;
         _mapper = mapper;
+        _foodCosting = foodCosting;
+    }
+
+    [HttpPut("update-diet-cost")]
+    public async Task<ActionResult> UpdateDietCost()
+    {
+        try
+        {
+            var updatedMealLogCount = await _foodCosting.UpdateMealLogCostsAsync();
+            var updatedDietStatCount = await _foodCosting.UpdateDietStatCostsAsync();
+
+            return Ok($"Updated {updatedMealLogCount} meal logs and {updatedDietStatCount} diet stats.");
+        }
+        catch (Exception ex)
+        {
+            return BadRequest(ex.Message);
+        }
     }
 
     [HttpGet("get-diet-diary")]
@@ -85,15 +104,11 @@ public class DietController : ControllerBase
         if (string.IsNullOrEmpty(name) || string.IsNullOrEmpty(unitOfMeasure) || quantity == 0)
             return BadRequest("Invalid input parameters.");
 
-        var foodPrice = await _context.FoodPrices
-            .FirstOrDefaultAsync(fp =>
-                fp.Name.ToLower() == name.ToLower() &&
-                fp.UnitOfMeasure.ToLower() == unitOfMeasure.ToLower());
+        var totalPrice = await _foodCosting.CalculateFoodCostAsync(name, quantity, unitOfMeasure);
 
-        if (foodPrice == null)
+        if (totalPrice == 0m)
             return NotFound("Food price not found.");
 
-        var totalPrice = foodPrice.Price * quantity;
         return Ok(totalPrice);
     }
 

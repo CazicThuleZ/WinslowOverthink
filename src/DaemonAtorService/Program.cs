@@ -90,7 +90,7 @@ namespace DaemonAtorService
                         q.AddJobAndTrigger<CryptoPriceJob>(jobSchedules.CryptoPriceJob);
                         q.AddJobAndTrigger<EmailReadJob>(jobSchedules.EmailReadJob);
                         q.AddJobAndTrigger<JournalIntakeJob>(jobSchedules.JournalIntakeJob);
-                        q.AddJobAndTrigger<DirectorySyncJob>(jobSchedules.DirectorySyncJob);
+                        q.AddJobAndTrigger<EndOfDayJob>(jobSchedules.EndOfDayJob);
                         q.AddJobAndTrigger<NotificationJob>(jobSchedules.NotificationJob);
                         q.AddJobAndTrigger<DatabaseSnapshotsJob>(jobSchedules.DatabaseSnapshotsJob);
                     });
