@@ -8,3 +8,5 @@ Email content:
 Response format:    
 Sent date: [date]
 Account balance: [balance]
+
+Do NOT include explanations or any other text.  If appropriate values cannot be extracted return 0 for [balance] and "0001-01-01" for [date]

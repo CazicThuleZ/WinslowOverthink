@@ -15,24 +15,48 @@ public class FoodCosting
     public async Task<int> UpdateMealLogCostsAsync()
     {
         var updatedCount = 0;
+        const int batchSize = 100;
+
         try
         {
+            // Process in batches
             var mealLogsWithZeroCost = await _context.MealLogs
                 .Where(meal => meal.Cost == 0)
+                .Select(m => m.Id)
                 .ToListAsync();
 
-            foreach (var mealLog in mealLogsWithZeroCost)
+            foreach (var batch in mealLogsWithZeroCost.Chunk(batchSize))
             {
-                decimal calculatedCost = await CalculateFoodCostAsync(mealLog.Name, mealLog.Quantity, mealLog.UnitOfMeasure);
-
-                if (calculatedCost > 0)
+                using var transaction = await _context.Database.BeginTransactionAsync();
+                try
                 {
-                    mealLog.Cost = calculatedCost;
-                    updatedCount++;
-                };
-            }
+                    var meals = await _context.MealLogs
+                        .Where(m => batch.Contains(m.Id))
+                        .ToListAsync();
 
-            await _context.SaveChangesAsync();
+                    foreach (var mealLog in meals)
+                    {
+                        decimal calculatedCost = await CalculateFoodCostAsync(
+                            mealLog.Name,
+                            mealLog.Quantity,
+                            mealLog.UnitOfMeasure);
+
+                        if (calculatedCost > 0)
+                        {
+                            mealLog.Cost = Math.Round(calculatedCost, 2);
+                            updatedCount++;
+                        }
+                    }
+
+                    await _context.SaveChangesAsync();
+                    await transaction.CommitAsync();
+                }
+                catch
+                {
+                    await transaction.RollbackAsync();
+                    throw;
+                }
+            }
         }
         catch (Exception ex)
         {
@@ -40,36 +64,57 @@ public class FoodCosting
         }
 
         return updatedCount;
-
     }
-    public async Task<decimal> UpdateDietStatCostsAsync()
+    public async Task<int> UpdateDietStatCostsAsync()
     {
         var updatedCount = 0;
+        const int batchSize = 100;
 
         try
         {
-            var unknownCostDays = await _context.DietStats
+            var unknownCostDayIds = await _context.DietStats
                 .Where(diet => diet.Cost == 0)
+                .Select(d => d.Id)
                 .ToListAsync();
 
-            foreach (var day in unknownCostDays)
+            foreach (var batch in unknownCostDayIds.Chunk(batchSize))
             {
-                var mealLogsForDay = await _context.MealLogs
-                    .Where(meal => meal.SnapshotDateUTC.Date == day.SnapshotDateUTC.Date)
-                    .ToListAsync();
+                using var transaction = await _context.Database.BeginTransactionAsync();
+                try
+                {
+                    var dietStats = await _context.DietStats
+                        .Where(d => batch.Contains(d.Id))
+                        .ToListAsync();
 
-                if (mealLogsForDay.Count == 0)
-                    continue;
+                    foreach (var day in dietStats)
+                    {
+                        var mealLogsForDay = await _context.MealLogs
+                            .Where(meal =>
+                                meal.SnapshotDateUTC.Date == day.SnapshotDateUTC.Date &&
+                                meal.Cost >= 0)
+                            .Select(m => new { m.Cost })
+                            .ToListAsync();
 
-                if (mealLogsForDay.All(meal => meal.Cost > 0)) 
-                    continue;
+                        if (!mealLogsForDay.Any())
+                            continue;
 
-                decimal totalCost = mealLogsForDay.Sum(meal => meal.Cost);
-                day.Cost = totalCost;
-                updatedCount++;
+                        if (mealLogsForDay.All(meal => meal.Cost > 0))  // If we still don't know the cost of a meal item, we don't know the cost for the day.
+                        {
+                            decimal totalCost = mealLogsForDay.Sum(meal => meal.Cost);
+                            day.Cost = Math.Round(totalCost, 2);
+                            updatedCount++;
+                        }
+                    }
+
+                    await _context.SaveChangesAsync();
+                    await transaction.CommitAsync();
+                }
+                catch
+                {
+                    await transaction.RollbackAsync();
+                    throw;
+                }
             }
-
-            await _context.SaveChangesAsync();
         }
         catch (Exception ex)
         {

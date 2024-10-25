@@ -62,7 +62,6 @@ namespace DaemonAtorService
                     services.Configure<GlobalSettings>(context.Configuration.GetSection("GlobalSettings"));
                     services.Configure<List<DirectorySyncSettings>>(context.Configuration.GetSection("DirectorySyncSettings"));
 
-                    services.AddSingleton<GmailServiceHelper>();
                     services.AddHttpClient();
                     services.AddSingleton<LogHandlerFactory>();
 

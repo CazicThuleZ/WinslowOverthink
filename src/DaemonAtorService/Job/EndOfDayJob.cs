@@ -40,45 +40,82 @@ public class EndOfDayJob : IJob
         {
             try
             {
-                string sourceDirectory = setting.SourceDirectory;
-                string destinationDirectory = setting.DestinationDirectory;
-                bool mirrorStructure = setting.MirrorDirectoryStructure;
+                if (string.IsNullOrEmpty(setting.SourceDirectory) || string.IsNullOrEmpty(setting.DestinationDirectory))
+                {
+                    _logger.LogError($"Invalid directory configuration: Source or destination path is empty");
+                    continue;
+                }
 
-                if (!Directory.Exists(destinationDirectory))
-                    Directory.CreateDirectory(destinationDirectory);
+                if (!Directory.Exists(setting.SourceDirectory))
+                {
+                    _logger.LogError($"Source directory does not exist: {setting.SourceDirectory}");
+                    continue;
+                }
 
-                var files = Directory.GetFiles(sourceDirectory, "*", SearchOption.AllDirectories);
+                Directory.CreateDirectory(setting.DestinationDirectory);
+
+                var files = Directory.GetFiles(setting.SourceDirectory, "*", SearchOption.AllDirectories);
 
                 foreach (var file in files)
                 {
-                    var relativePath = Path.GetRelativePath(sourceDirectory, file);
-                    var destFile = mirrorStructure ? Path.Combine(destinationDirectory, relativePath) : Path.Combine(destinationDirectory, Path.GetFileName(file));
-
-                    var destDir = Path.GetDirectoryName(destFile);
-                    if (!Directory.Exists(destDir))
-                        Directory.CreateDirectory(destDir);
-
-                    if (!File.Exists(destFile))
+                    try
                     {
-                        File.Copy(file, destFile, false);
-                        syncedFileCount++;
+                        var relativePath = Path.GetRelativePath(setting.SourceDirectory, file);
+                        var destFile = setting.MirrorDirectoryStructure
+                            ? Path.Combine(setting.DestinationDirectory, relativePath)
+                            : Path.Combine(setting.DestinationDirectory, Path.GetFileName(file));
+
+                        var destDir = Path.GetDirectoryName(destFile);
+                        if (!Directory.Exists(destDir))
+                            Directory.CreateDirectory(destDir);
+
+                        var sourceInfo = new FileInfo(file);
+                        var destInfo = new FileInfo(destFile);
+
+                        if (!destInfo.Exists || sourceInfo.LastWriteTimeUtc > destInfo.LastWriteTimeUtc)
+                        {
+                            await RetryWithTimeout(() =>
+                            {
+                                File.Copy(file, destFile, true);
+                                syncedFileCount++;
+                                return Task.CompletedTask;
+                            }, 3, TimeSpan.FromSeconds(30));
+                        }
+                    }
+                    catch (Exception ex)
+                    {
+                        _logger.LogError($"Failed to sync file {file}: {ex.Message}");
                     }
                 }
 
-                _logger.LogInformation($"Directory synchronization completed successfully for source: {sourceDirectory} to destination: {destinationDirectory}.");
+                _logger.LogInformation($"Directory synchronization completed for {setting.SourceDirectory} → {setting.DestinationDirectory}");
             }
             catch (Exception ex)
             {
-                _logger.LogError($"Error during directory synchronization for source: {setting.SourceDirectory} to destination: {setting.DestinationDirectory}. Error: {ex.Message}");
+                _logger.LogError($"Critical error during directory synchronization: {ex.Message}");
             }
         }
 
-        _logger.LogInformation($"EndOfDayJob synced files: {syncedFileCount.ToString()}");
-
-        await Task.CompletedTask;
-
+        _logger.LogInformation($"Total files synced: {syncedFileCount}");
     }
 
+    private async Task RetryWithTimeout(Func<Task> action, int maxAttempts, TimeSpan timeout)
+    {
+        for (int attempt = 1; attempt <= maxAttempts; attempt++)
+        {
+            try
+            {
+                using var cts = new CancellationTokenSource(timeout);
+                await action().WaitAsync(cts.Token);
+                return;
+            }
+            catch (Exception ex) when (attempt < maxAttempts)
+            {
+                _logger.LogWarning($"Attempt {attempt} failed: {ex.Message}. Retrying...");
+                await Task.Delay(TimeSpan.FromSeconds(Math.Pow(2, attempt)));
+            }
+        }
+    }
     public async Task UpdateFoodDietDiaryCosts()
     {
         try

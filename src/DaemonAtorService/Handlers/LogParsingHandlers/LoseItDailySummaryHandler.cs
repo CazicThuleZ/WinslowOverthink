@@ -27,12 +27,21 @@ namespace DaemonAtorService
 
             try
             {
-                bool success = true;
-                CsvParser parser = new CsvParser();
+                var parser = new CsvParser();
                 var dietStatistics = parser.ParseCsv(fileName);
-                success = await LogDietMenuPricingAsync(dietStatistics);
+
+                var success = await LogPricingAsync(dietStatistics);
                 if (success)
-                    success = await LogDietDataAsync(dietStatistics);
+                {
+                    await LogMealsAsync(dietStatistics);
+                    var (totalCost, allCostsDetermined) = await CalculateTotalCostAsync(dietStatistics);
+
+                    if (!allCostsDetermined)
+                        totalCost = 0; // The idea being that if even one item in the meal log is indeterminate, the total cost for the day should be 0 (additional attempts to get it right will be made as part of the end-of-day processing)
+
+                    success = await LogDietAsync(dietStatistics, totalCost);
+
+                }
 
                 return success;
             }
@@ -43,12 +52,12 @@ namespace DaemonAtorService
             }
         }
 
-        private async Task<bool> LogDietMenuPricingAsync(List<DietStatistic> dietStatistics)
+        private async Task<bool> LogPricingAsync(List<DietStatistic> dietStatistics)
         {
             bool success = true;
             foreach (var dietStat in dietStatistics)
             {
-                if (dietStat.Calories > 0)
+                if (dietStat.Type.ToLower() != "exercise")
                 {
                     var foodPriceDto = new FoodPriceDto
                     {
@@ -59,10 +68,9 @@ namespace DaemonAtorService
 
                     var jsonOptions = new JsonSerializerOptions { WriteIndented = true };
                     var jsonData = JsonSerializer.Serialize(foodPriceDto, jsonOptions);
-
                     var content = new StringContent(jsonData, Encoding.UTF8, "application/json");
 
-                    var response = await _httpClient.PostAsync(_dashboardUrl + @"/diet/add-food-price", content);
+                    var response = await _httpClient.PostAsync(_dashboardUrl + "/diet/add-food-price", content);
 
                     if (response.IsSuccessStatusCode)
                     {
@@ -79,100 +87,58 @@ namespace DaemonAtorService
             return success;
         }
 
-        private async Task<bool> LogDietDataAsync(List<DietStatistic> dietStatistics)
+        private async Task<(decimal TotalCost, bool AllCostsDetermined)> CalculateTotalCostAsync(List<DietStatistic> dietStatistics)
         {
-            try
-            {
-                if (dietStatistics == null || !dietStatistics.Any())
-                {
-                    _logger.LogInformation($"No dietary data to log.");
-                    return false;
-                }
-
-                var reportDate = dietStatistics.First().Date;
-
-                var allConsumedFoodCost = await DetermineFoodCost(dietStatistics);
-
-                var dietStatDto = new DietStatDto
-                {
-                    SnapshotDateUTC = reportDate,
-
-                    Calories = dietStatistics
-                        .Where(stat => stat.Type.ToLower() != "exercise")
-                        .Sum(stat => stat.Calories),
-                    ExerciseCalories = dietStatistics
-                        .Where(stat => stat.Type.ToLower() == "exercise")
-                        .Sum(stat => stat.Calories),
-                    FatGrams = dietStatistics.Sum(stat => stat.Fat),
-                    ProteinGrams = dietStatistics.Sum(stat => stat.Protein),
-                    CarbGrams = dietStatistics.Sum(stat => stat.Carbohydrates),
-                    SaturatedFatGrams = dietStatistics.Sum(stat => stat.SaturatedFat),
-                    SugarGrams = dietStatistics.Sum(stat => stat.Sugars),
-                    FiberGrams = dietStatistics.Sum(stat => stat.Fiber),
-                    CholesterolGrams = dietStatistics.Sum(stat => stat.Cholesterol),
-                    SodiumMilliGrams = dietStatistics.Sum(stat => stat.Sodium),
-                    Cost = allConsumedFoodCost
-                };
-
-                var jsonOptions = new JsonSerializerOptions { WriteIndented = true };
-                var jsonData = JsonSerializer.Serialize(dietStatDto, jsonOptions);
-
-                var content = new StringContent(jsonData, Encoding.UTF8, "application/json");
-
-                var response = await _httpClient.PostAsync(_dashboardUrl + @"/diet/create-diet-diary-snapshot", content);
-
-                if (response.IsSuccessStatusCode)
-                {
-                    _logger.LogInformation($"Successfully processed and posted dietary data for {reportDate}");
-                    return true;
-                }
-                else
-                {
-                    _logger.LogError($"Failed to post data dietary data for {reportDate}. Status Code: {response.StatusCode}");
-                    return false;
-                }
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, $"Failed to log diet data for file");
-                throw;
-            }
-        }
-
-        private async Task<decimal> DetermineFoodCost(List<DietStatistic> dietStatistics)
-        {
-            // Try to get the cost, but if even a single value can't be determined, return 0 because knowing
-            // some of the cost as opposed to all of it has no value.
             decimal totalCost = 0;
             bool allCostsDetermined = true;
 
             foreach (var dietStat in dietStatistics)
             {
-                if (dietStat.Type.ToLower() != "exercise") // Exclude exercise, for it is free.
+                if (dietStat.Type.ToLower() == "exercise")
+                    continue;
+
+                var (foodPrice, success) = await GetFoodPriceAsync(dietStat);
+                if (success)
                 {
-                    var response = await _httpClient.GetAsync(
-                        _dashboardUrl + $"/diet/calculate-food-price?name={dietStat.Name}&unitOfMeasure={dietStat.Units}&quantity={dietStat.Quantity}");
-
-                    if (!response.IsSuccessStatusCode)
-                        return 0;
-
-                    var foodPrice = await response.Content.ReadFromJsonAsync<decimal>();
-
-                    if (foodPrice == 0)
-                        allCostsDetermined = false;
-
                     totalCost += foodPrice;
-                    await logMealAsync(dietStat, foodPrice);
+                }
+                else
+                {
+                    allCostsDetermined = false;
                 }
             }
 
-            if (!allCostsDetermined)
-                return 0;
-            else
-                return totalCost;
+            return (totalCost, allCostsDetermined);
         }
 
-        private async Task logMealAsync(DietStatistic dietStat, decimal foodPrice)
+        private async Task<(decimal Price, bool Success)> GetFoodPriceAsync(DietStatistic dietStat)
+        {
+            var response = await _httpClient.GetAsync(
+                _dashboardUrl + $"/diet/calculate-food-price?name={dietStat.Name}&unitOfMeasure={dietStat.Units}&quantity={dietStat.Quantity}");
+
+            if (response.IsSuccessStatusCode)
+            {
+                var price = await response.Content.ReadFromJsonAsync<decimal>();
+                return (price, true);
+            }
+
+            _logger.LogInformation("Failed to determine food price for {FoodName} at {Date}. Status Code: {StatusCode}, Response: {ResponseContent}",
+                dietStat.Name, dietStat.Date, response.StatusCode, await response.Content.ReadAsStringAsync());
+            return (0, false);
+        }
+
+        private async Task LogMealsAsync(List<DietStatistic> dietStatistics)
+        {
+            foreach (var dietStat in dietStatistics)
+            {
+                if (dietStat.Type.ToLower() == "exercise") continue;
+
+                var (foodPrice, _) = await GetFoodPriceAsync(dietStat);
+                await LogMealEntryAsync(dietStat, foodPrice);
+            }
+        }
+
+        private async Task LogMealEntryAsync(DietStatistic dietStat, decimal foodPrice)
         {
             var mealLogDto = new MealLogDto
             {
@@ -193,13 +159,69 @@ namespace DaemonAtorService
             var jsonData = JsonSerializer.Serialize(mealLogDto, jsonOptions);
 
             var content = new StringContent(jsonData, Encoding.UTF8, "application/json");
-
             var response = await _httpClient.PostAsync(_dashboardUrl + "/diet/create-meal-log-entry", content);
 
             if (response.IsSuccessStatusCode)
                 _logger.LogInformation("Successfully logged meal data for {MealName} at {Date}", dietStat.Name, dietStat.Date);
             else
-                _logger.LogError("Failed to log meal data for {MealName} at {Date}. Status Code: {StatusCode}, Response: {ResponseContent}", dietStat.Name, dietStat.Date, response.StatusCode, await response.Content.ReadAsStringAsync());
+                _logger.LogError("Failed to log meal data for {MealName} at {Date}. Status Code: {StatusCode}, Response: {ResponseContent}",
+                    dietStat.Name, dietStat.Date, response.StatusCode, await response.Content.ReadAsStringAsync());
+        }
+
+        private async Task<bool> LogDietAsync(List<DietStatistic> dietStatistics, decimal totalCost)
+        {
+            try
+            {
+                if (dietStatistics == null || !dietStatistics.Any())
+                {
+                    _logger.LogInformation($"No dietary data to log.");
+                    return false;
+                }
+
+                var reportDate = dietStatistics.First().Date;
+
+                var dietStatDto = new DietStatDto
+                {
+                    SnapshotDateUTC = reportDate,
+                    Calories = dietStatistics
+                        .Where(stat => stat.Type.ToLower() != "exercise")
+                        .Sum(stat => stat.Calories),
+                    ExerciseCalories = dietStatistics
+                        .Where(stat => stat.Type.ToLower() == "exercise")
+                        .Sum(stat => stat.Calories),
+                    FatGrams = dietStatistics.Sum(stat => stat.Fat),
+                    ProteinGrams = dietStatistics.Sum(stat => stat.Protein),
+                    CarbGrams = dietStatistics.Sum(stat => stat.Carbohydrates),
+                    SaturatedFatGrams = dietStatistics.Sum(stat => stat.SaturatedFat),
+                    SugarGrams = dietStatistics.Sum(stat => stat.Sugars),
+                    FiberGrams = dietStatistics.Sum(stat => stat.Fiber),
+                    CholesterolGrams = dietStatistics.Sum(stat => stat.Cholesterol),
+                    SodiumMilliGrams = dietStatistics.Sum(stat => stat.Sodium),
+                    Cost = totalCost
+                };
+
+                var jsonOptions = new JsonSerializerOptions { WriteIndented = true };
+                var jsonData = JsonSerializer.Serialize(dietStatDto, jsonOptions);
+                var content = new StringContent(jsonData, Encoding.UTF8, "application/json");
+
+                var response = await _httpClient.PostAsync(_dashboardUrl + "/diet/create-diet-diary-snapshot", content);
+
+                if (response.IsSuccessStatusCode)
+                {
+                    _logger.LogInformation($"Successfully processed and posted dietary data for {reportDate}");
+                    return true;
+                }
+                else
+                {
+                    _logger.LogError($"Failed to post data dietary data for {reportDate}. Status Code: {response.StatusCode}");
+                    return false;
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, $"Failed to log diet data for file");
+                throw;
+            }
         }
     }
 }
