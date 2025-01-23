@@ -2,6 +2,7 @@ using System;
 using System.Diagnostics.Metrics;
 using System.Net.Http.Json;
 using System.Web;
+using DaemonAtorService.Helper;
 using Microsoft.Extensions.Options;
 using Quartz;
 
@@ -14,13 +15,15 @@ public class EndOfDayJob : IJob
     private readonly List<DirectorySyncSettings> _syncSettings;
     private readonly HttpClient _httpClient;
     private readonly string _dashboardUrl;
+    private readonly PostgresBackupService _backupService;
 
-    public EndOfDayJob(ILogger<EndOfDayJob> logger, IOptions<GlobalSettings> globalSettings, HttpClient httpClient, IOptions<List<DirectorySyncSettings>> syncSettings)
+    public EndOfDayJob(ILogger<EndOfDayJob> logger, IOptions<GlobalSettings> globalSettings, HttpClient httpClient, IOptions<List<DirectorySyncSettings>> syncSettings, PostgresBackupService backupService)
     {
         _logger = logger;
         _httpClient = httpClient;
         _dashboardUrl = globalSettings.Value.DashboardServiceBaseEndpoint;
         _syncSettings = syncSettings.Value;
+        _backupService = backupService;
     }
     public async Task Execute(IJobExecutionContext context)
     {
@@ -28,6 +31,7 @@ public class EndOfDayJob : IJob
 
         await UpdateFoodDietDiaryCosts();
         await SyncDirectories();
+        await _backupService.PerformBackups();        
 
         _logger.LogInformation($"EndOfDayJob completed at {DateTimeOffset.Now}");
 

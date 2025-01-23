@@ -6,6 +6,8 @@ using Quartz.Spi;
 using Serilog;
 using Serilog.Events;
 using Microsoft.Extensions.Configuration;
+using DaemonAtorService.Models;
+using DaemonAtorService.Helper;
 
 namespace DaemonAtorService
 {
@@ -61,6 +63,7 @@ namespace DaemonAtorService
                     services.Configure<ArchiveFileSettings>(context.Configuration.GetSection("ArchiveFileSettings"));
                     services.Configure<GlobalSettings>(context.Configuration.GetSection("GlobalSettings"));
                     services.Configure<List<DirectorySyncSettings>>(context.Configuration.GetSection("DirectorySyncSettings"));
+                    services.Configure<PostgresBackupSettings>(context.Configuration.GetSection("PostgresBackupSettings"));
 
                     services.AddHttpClient();
                     services.AddSingleton<LogHandlerFactory>();
@@ -78,6 +81,7 @@ namespace DaemonAtorService
                     services.AddTransient<OtherLogHandler>();
 
                     services.AddTransient<PokeTheOracle>();
+                    services.AddTransient<PostgresBackupService>();
 
                     var kernel = SemanticKernelConfig.InitializeKernel(context.Configuration);
                     services.AddSingleton(kernel);
