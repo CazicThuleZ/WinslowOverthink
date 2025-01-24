@@ -23,6 +23,12 @@ services:
     ports:
       - 5672:5672
       - 15672:15672
+  it-tools:
+    image: 'corentinth/it-tools:latest'
+    ports:
+      - '63536:80'
+    restart: unless-stopped
+    container_name: it-tools      
   nocodb: 
     depends_on: 
       - postgres
