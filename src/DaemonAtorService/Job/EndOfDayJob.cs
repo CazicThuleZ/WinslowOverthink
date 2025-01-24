@@ -31,7 +31,7 @@ public class EndOfDayJob : IJob
 
         await UpdateFoodDietDiaryCosts();
         await SyncDirectories();
-        await _backupService.PerformBackups();        
+        await _backupService.PerformBackups();
 
         _logger.LogInformation($"EndOfDayJob completed at {DateTimeOffset.Now}");
 
@@ -58,9 +58,24 @@ public class EndOfDayJob : IJob
 
                 Directory.CreateDirectory(setting.DestinationDirectory);
 
-                var files = Directory.GetFiles(setting.SourceDirectory, "*", SearchOption.AllDirectories);
+                var searchOption = setting.IncludeSubdirectories
+                    ? SearchOption.AllDirectories
+                    : SearchOption.TopDirectoryOnly;
 
-                foreach (var file in files)
+                var patterns = setting.FilePatterns != null && setting.FilePatterns.Any()
+                    ? setting.FilePatterns
+                    : new List<string> { "*" }; // Default to all files if no patterns are configured
+
+                var allFiles = new List<string>();
+                foreach (var pattern in patterns)
+                {
+                    allFiles.AddRange(Directory.GetFiles(setting.SourceDirectory, pattern, searchOption));
+                }
+
+                // Remove duplicates caused by overlapping patterns
+                var uniqueFiles = allFiles.Distinct();
+
+                foreach (var file in uniqueFiles)
                 {
                     try
                     {
